@@ -17,11 +17,13 @@ Stato del progetto e prossimi passi. Per cosa fa oggi il sistema e come si usa v
 - [x] Temperatura legata alla modalità, con `--temperature` come override
 - [x] Comando `eval` per calibrare le soglie su domande etichettate
 - [x] Re-ranking opzionale con cross-encoder (`--rerank`), con soglie per categoria calibrate con `eval --rerank`
+- [x] EmbeddingGemma 2 al posto di mpnet ed e5, con colonna `category` nello storage e soglie ricalibrate
 
 ## Prossimo step
 
-- [ ] Decidere se il re-ranking diventa il default (almeno per `note`) e come evitare di ricaricare il modello a ogni query (vedi REPL)
-- [ ] Ampliare le domande di `eval` per rendere più solide le soglie del re-ranker (margine stretto in `note`)
+- [ ] Riverificare le soglie del re-ranker con EmbeddingGemma 2 (`eval --rerank`) e decidere se resta opzionale
+- [ ] Ampliare le domande di `eval` per rendere più solide le soglie (margine di circa 0.05 in `note`)
+- [ ] Direzione "grande": servizio con API, utenti e collezioni separate, da collegare al social network wuxer (da definire)
 
 ## Secondari
 
