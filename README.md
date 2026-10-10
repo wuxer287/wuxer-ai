@@ -156,7 +156,7 @@ Ogni risposta mostra il testo generato, le fonti consultate e il consumo di toke
 ### Valutare le soglie
 
 ```bash
-python src/cli.py eval eval/questions.json [--top-k 5] [--verbose] [--rerank] [--pool 20] [--rerank-min 0.5]
+python src/cli.py eval eval/questions.json [--top-k 5] [--verbose] [--rerank] [--pool 20] [--rerank-min <soglia>]
 ```
 
 Non chiama l'LLM: fa solo la ricerca. Va lanciato dalla cartella che contiene `test.db`. Ogni domanda del file JSON ha:
@@ -214,7 +214,7 @@ Tutte le categorie usano `google/embeddinggemma-2` (768 dimensioni, contesto fin
 | `note` | `google/embeddinggemma-2` | 0.735 | predefinito (`--dimension 40 --overlap 1`) |
 | `programma` | `google/embeddinggemma-2` | 0.65 | `--dimension 150 --overlap 1` |
 
-Modello e soglie di ogni categoria sono definiti nel dizionario `CATEGORY_MODELS` in `cli.py`. Ogni chunk viene salvato con il nome del modello e la categoria; la ricerca legge solo i chunk della categoria richiesta. Se si cambia modello, bisogna reindicizzare tutta la categoria: embedding di modelli diversi non sono confrontabili, nemmeno a parità di dimensione del vettore. I modelli precedenti (`paraphrase-multilingual-mpnet-base-v2` e `intfloat/multilingual-e5-large`) restano gestiti in `embedding.py`.
+Modello e soglie di ogni categoria sono definiti nel dizionario `CATEGORY_MODELS` in `cli.py`. Ogni chunk viene salvato con il nome del modello e la categoria; la ricerca legge solo i chunk della categoria richiesta. Se si cambia modello, bisogna reindicizzare tutta la categoria: embedding di modelli diversi non sono confrontabili, nemmeno a parità di dimensione del vettore.
 
 Ogni modello tronca **in silenzio** il testo oltre il proprio limite di token. Con EmbeddingGemma 2 il limite (8192) è molto più alto dei chunk usati (circa 350 token nel `programma`), quindi il problema non si pone con questi dati.
 
@@ -226,14 +226,14 @@ Similarità coseno tra domanda e chunk della categoria, ordinamento decrescente,
 
 Con `--rerank` la ricerca per coseno non decide più cosa passare al modello: prende un gruppo più ampio di candidati (`--pool`, default 20), un cross-encoder (`BAAI/bge-reranker-v2-m3`) legge domanda e chunk insieme e assegna un punteggio tra 0 e 1, si tengono i primi `--top-k` e si scartano quelli sotto `--rerank-min`. Il modello pesa circa 2 GB, si scarica al primo uso ed è molto più veloce con una GPU. Si ricarica a ogni esecuzione.
 
-Risultati sulle stesse 55 domande, misurati con i modelli di embedding precedenti (mpnet ed e5). Con EmbeddingGemma 2 i candidati scelti dalla ricerca cambiano: le soglie del re-ranker vanno riverificate con `eval --rerank`.
+Risultati con EmbeddingGemma 2 sulle stesse 55 domande (`eval --rerank`):
 
 | Categoria | Pertinenti (1° chunk) | Fuori tema (chunk più alto) | Soglia scelta |
 |---|---|---|---|
-| `note` | 0.094 – 1.000 | fino a 0.040 | **0.06**: nessuna risposta persa, nessun fuori tema passa (con il coseno 5 su 11) |
-| `programma` | 0.079 – 0.989 | fino a 0.001 | **0.03**: nessuna risposta persa, nessun fuori tema passa, nessuna borderline passa |
+| `note` | 0.094 – 1.000 | fino a 0.040 | **0.06**: nessuna risposta persa, nessun fuori tema passa; 3 borderline su 4 passano (come con il coseno) |
+| `programma` | 0.064 – 0.989 | fino a 0.001 | **0.03**: nessuna risposta persa, nessun fuori tema passa, nessuna borderline passa |
 
-I punteggi del re-ranker sono molto polarizzati (vicini a 0 o a 1), quindi le soglie sono basse e il margine, soprattutto in `note` (0.040 contro 0.094), è stretto. Le domande ampie come "Cosa dice il programma sull'Unione Europea?" ottengono punteggi bassi anche se pertinenti. I chunk in coda alle domande pertinenti hanno spesso punteggi bassi perché non rispondono: con il re-ranking il contesto passato al modello è più corto e più mirato. Il vantaggio è netto su `note`; su `programma` il coseno separava già bene.
+I punteggi del re-ranker sono molto polarizzati (vicini a 0 o a 1), quindi le soglie sono basse e il margine tra pertinenti e fuori tema (0.094 contro 0.040 in `note`, 0.064 contro 0.001 in `programma`) è stretto, soprattutto in `note`. Le domande ampie come "Cosa dice il programma sull'Unione Europea?" ottengono punteggi bassi anche se pertinenti. I chunk in coda alle domande pertinenti hanno spesso punteggi bassi perché non rispondono: con il re-ranking il contesto passato al modello è più corto e più mirato. In `note` il vantaggio è netto rispetto al coseno; in `programma` il coseno separava già bene, quindi il re-ranking serve meno e resta opzionale.
 
 ### Calibrazione della soglia
 
@@ -245,8 +245,6 @@ Risultati con EmbeddingGemma 2 su 55 domande (15 + 11 + 4 per `note`, 14 + 7 + 4
 |---|---|---|---|
 | `note` | 0.759 – 0.878 | fino a 0.707 | **0.735**: nessuna risposta persa, nessun fuori tema passa, 13 chunk su 75 tagliati |
 | `programma` | 0.725 – 0.842 | fino a 0.611 | **0.65**: nessuna risposta persa, nessun chunk pertinente tagliato, nessun fuori tema passa |
-
-Con i modelli precedenti la separazione era peggiore: in `note` (mpnet) pertinenti e fuori tema si sovrapponevano (pertinenti da 0.534, fuori tema fino a 0.571) e in `programma` (e5) tutti i punteggi stavano in una fascia di pochi centesimi.
 
 Le domande borderline (vicine per tema ma senza risposta nel testo) superano comunque la soglia (3 su 4 in `note`, 4 su 4 in `programma`): il coseno non distingue "stesso tema" da "il testo risponde", quindi in `strict` decide il prompt, oppure si può usare il re-ranking. Il margine in `note` è di circa 0.05 sul primo risultato e il campione di calibrazione è piccolo, quindi la soglia va riverificata se cambiano il corpus o il chunking.
 
@@ -267,7 +265,7 @@ Indicizzazione e ricerca avvengono in locale, ma per generare la risposta il tes
 ## Limiti noti
 
 - **Le soglie di similarità non sono confrontabili tra modelli** e vanno calibrate per ciascuno (vedi [Calibrazione](#calibrazione-della-soglia)). Cambiando modello bisogna reindicizzare e rifare la calibrazione.
-- **La similarità coseno non separa nettamente** contenuti rilevanti e irrilevanti. In `note` una domanda fuori tema come "Come si prepara il tè?" arriva a 0.707, contro 0.759 della pertinente più debole: il margine è di circa 0.05. Le domande vicine per tema ma senza risposta nel testo (borderline) superano la soglia. Il filtro è grezzo: il re-ranking (`--rerank`) le gestiva meglio con i modelli precedenti (da riverificare con Gemma), altrimenti il secondo controllo è il prompt di `strict`.
+- **La similarità coseno non separa nettamente** contenuti rilevanti e irrilevanti. In `note` una domanda fuori tema come "Come si prepara il tè?" arriva a 0.707, contro 0.759 della pertinente più debole: il margine è di circa 0.05. Le domande vicine per tema ma senza risposta nel testo (borderline) superano la soglia. Il filtro è grezzo: il re-ranking (`--rerank`) separa meglio i fuori tema in `note` (a 0.06 nessuno passa), ma non le borderline; altrimenti il secondo controllo è il prompt di `strict`.
 - **`standard` e `full` possono trattare chunk poco pertinenti come fonti valide**, e le fonti elencate non garantiscono che ogni affermazione della risposta derivi da esse. In `full` testo e interpretazione del modello possono fondersi.
 - **Risposte non identiche tra una esecuzione e l'altra**: la temperatura è bassa o nulla in `strict` e `standard`, quindi le risposte sono molto simili, ma il provider non garantisce un output uguale parola per parola. In `full` la variazione è voluta.
 - Nessuna memoria tra le domande: ogni query è indipendente.

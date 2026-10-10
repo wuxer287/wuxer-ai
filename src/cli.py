@@ -214,8 +214,8 @@ eval_parser.add_argument(
 eval_parser.add_argument(
     "--rerank-min",
     type=float,
-    default=0.5,
-    help="Soglia provvisoria sul punteggio del re-ranker (0-1) usata nel report (default: 0.5)."
+    default=None,
+    help="Soglia sul punteggio del re-ranker (0-1) usata nel report (default: quella della categoria)."
 )
 
 
@@ -254,7 +254,7 @@ if args.command == "index":
         deleteChunksBySource(conn_chunk, file_path.name)
         text = readFile(file_path)
         chunked_text = chunkText(text, args.dimension, args.overlap) if strategy == "word" else chunkTextBySentence(text, args.dimension, args.overlap)
-        embed_chunk = embeddedTexts(model, chunked_text, hf_model_name, "passage")
+        embed_chunk = embeddedTexts(model, chunked_text, hf_model_name, "index")
 
         for i in range(len(chunked_text)):
             insertChunk(conn_chunk, chunked_text[i], embed_chunk[i], file_path.name, hf_model_name, args.category)
@@ -372,7 +372,8 @@ elif args.command == "eval":
 
         if reranker is not None:
             rr_results = scoreQuestions(model, hf_model_name, chunks, group, args.top_k, reranker, args.pool)
-            rr_summary = summarize(rr_results, args.rerank_min)
+            rr_threshold = args.rerank_min if args.rerank_min is not None else CATEGORY_MODELS[category]["rerank_min"]
+            rr_summary = summarize(rr_results, rr_threshold)
             printReport(category, rr_results, rr_summary, args.verbose, RERANK_SWEEP, "re-ranking")
 else:
     parser.print_help()

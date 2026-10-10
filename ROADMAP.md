@@ -18,10 +18,11 @@ Stato del progetto e prossimi passi. Per cosa fa oggi il sistema e come si usa v
 - [x] Comando `eval` per calibrare le soglie su domande etichettate
 - [x] Re-ranking opzionale con cross-encoder (`--rerank`), con soglie per categoria calibrate con `eval --rerank`
 - [x] EmbeddingGemma 2 al posto di mpnet ed e5, con colonna `category` nello storage e soglie ricalibrate
+- [x] Soglie del re-ranker riverificate con EmbeddingGemma 2 (`note` 0.06, `programma` 0.03)
 
 ## Prossimo step
 
-- [ ] Riverificare le soglie del re-ranker con EmbeddingGemma 2 (`eval --rerank`) e decidere se resta opzionale
+- [ ] Decidere se il re-ranking resta opzionale (utile in `note`, poco in `programma`)
 - [ ] Ampliare le domande di `eval` per rendere più solide le soglie (margine di circa 0.05 in `note`)
 - [ ] Direzione "grande": servizio con API, utenti e collezioni separate, da collegare al social network wuxer (da definire)
 
