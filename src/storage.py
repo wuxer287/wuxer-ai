@@ -14,20 +14,21 @@ def createTableChunk(conn: sqlite3.Connection) -> None:
             text TEXT,
             embedding BLOB,
             source TEXT,
-            hf_model_name TEXT
+            hf_model_name TEXT,
+            category TEXT
         )
     """)
 
     cur.close()
     conn.commit()
 
-def insertChunk(conn: sqlite3.Connection, text: str, embedding: np.ndarray, source: str, hf_model_name: str) -> None:
+def insertChunk(conn: sqlite3.Connection, text: str, embedding: np.ndarray, source: str, hf_model_name: str, category: str) -> None:
     cur = conn.cursor()
 
     cur.execute("""
-        INSERT INTO chunks (text, embedding, source, hf_model_name)
-        VALUES (?, ?, ?, ?)
-    """, (text, embedding.tobytes(), source, hf_model_name))
+        INSERT INTO chunks (text, embedding, source, hf_model_name, category)
+        VALUES (?, ?, ?, ?, ?)
+    """, (text, embedding.tobytes(), source, hf_model_name, category))
 
     cur.close()
     conn.commit()
@@ -53,14 +54,14 @@ def getAllChunks(conn: sqlite3.Connection) -> list[tuple] | None:
 
     return new_data
 
-def getChunksByModel(conn: sqlite3.Connection, hf_model_name: str) -> list[tuple] | None:
+def getChunksByCategory(conn: sqlite3.Connection, category: str) -> list[tuple] | None:
     cur = conn.cursor()
 
     cur.execute("""
         SELECT text, embedding, source, hf_model_name
         FROM chunks
-        WHERE hf_model_name = ?
-    """, (hf_model_name,))
+        WHERE category = ?
+    """, (category,))
 
     data = cur.fetchall()
 

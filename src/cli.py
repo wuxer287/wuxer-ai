@@ -6,7 +6,7 @@ from pathlib import Path
 from itertools import chain
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-from storage import createConnection, createTableChunk, insertChunk, getChunksByModel, deleteChunksBySource, createTableLog, logQuery, saveAnswerToFile
+from storage import createConnection, createTableChunk, insertChunk, getChunksByCategory, deleteChunksBySource, createTableLog, logQuery, saveAnswerToFile
 from chunking import chunkText, chunkTextBySentence
 from embedding import loadModel, embeddedTexts
 from search import search
@@ -15,15 +15,17 @@ from readers import readFile
 from evaluation import loadQuestions, groupByCategory, scoreQuestions, summarize, printReport, RERANK_SWEEP
 from reranking import loadReranker, rerank
 
+EMBEDDING_MODEL = "google/embeddinggemma-2"
+
 CATEGORY_MODELS = {
     "note": {
-        "model": "paraphrase-multilingual-mpnet-base-v2",
-        "min_sim": 0.4,
+        "model": EMBEDDING_MODEL,
+        "min_sim": 0.735,
         "rerank_min": 0.06
     },
     "programma": {
-        "model": "intfloat/multilingual-e5-large",
-        "min_sim": 0.8,
+        "model": EMBEDDING_MODEL,
+        "min_sim": 0.65,
         "rerank_min": 0.03
     }
 }
@@ -117,15 +119,15 @@ query_parser.add_argument(
     help="Soglia minima di similarità (0-1) sotto la quale un chunk viene scartato prima di essere passato al modello. "
          "Se omessa, si usa quella calibrata per la categoria. "
          "Indica 0 per vedere tutti i risultati, utile con --show-chunks per calibrare. "
-         "Le soglie non sono confrontabili tra categorie diverse perché ogni modello ha una scala di punteggi propria."
+         "Le soglie vanno calibrate per ogni categoria."
 )
 
 query_parser.add_argument(
     "--category",
     choices=list(CATEGORY_MODELS.keys()),
     default="note",
-    help="Categoria su cui cercare: deve coincidere con quella usata in fase di indicizzazione "
-         "perché modelli diversi producono embedding non confrontabili (default: note)."
+    help="Categoria su cui cercare: deve coincidere con quella usata in fase di indicizzazione, "
+         "perché la ricerca avviene solo tra i chunk di quella categoria (default: note)."
 )
 
 query_parser.add_argument(
@@ -147,7 +149,7 @@ query_parser.add_argument(
     "--rerank",
     action="store_true",
     help="Riordina i candidati con un cross-encoder (BAAI/bge-reranker-v2-m3) e scarta quelli sotto --rerank-min. "
-         "Più preciso ma più lento."
+         "Più preciso ma più lento. "
          "Con questa opzione --min-sim viene ignorato."
 )
 
@@ -255,7 +257,7 @@ if args.command == "index":
         embed_chunk = embeddedTexts(model, chunked_text, hf_model_name, "passage")
 
         for i in range(len(chunked_text)):
-            insertChunk(conn_chunk, chunked_text[i], embed_chunk[i], file_path.name, hf_model_name)
+            insertChunk(conn_chunk, chunked_text[i], embed_chunk[i], file_path.name, hf_model_name, args.category)
 
         counter += 1
         print(f"[{counter}/{total_counter}] file indexed ({file_path.name})")
@@ -289,7 +291,7 @@ elif args.command == "query":
     client = createClient(api_key)
 
     embed_query = embeddedTexts(model, [query], hf_model_name, "query")
-    chunks = getChunksByModel(conn_chunk, hf_model_name)
+    chunks = getChunksByCategory(conn_chunk, category)
 
     if chunks is None:
         print("Non ci sono valori per questa ricerca")
@@ -348,18 +350,22 @@ elif args.command == "eval":
     createTableChunk(conn_chunk)
 
     reranker = loadReranker() if args.rerank else None
+    models = {}
 
     for category, group in groupByCategory(questions).items():
         hf_model_name = CATEGORY_MODELS[category]["model"]
         threshold = CATEGORY_MODELS[category]["min_sim"]
-        chunks = getChunksByModel(conn_chunk, hf_model_name)
+        chunks = getChunksByCategory(conn_chunk, category)
 
         if chunks is None:
             print(f"Categoria {category}: nessun chunk indicizzato, viene saltato")
 
             continue
 
-        model = loadModel(hf_model_name)
+        if hf_model_name not in models:
+            models[hf_model_name] = loadModel(hf_model_name)
+
+        model = models[hf_model_name]
         results = scoreQuestions(model, hf_model_name, chunks, group, args.top_k)
         summary = summarize(results, threshold)
         printReport(category, results, summary, args.verbose)

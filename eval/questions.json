@@ -24,7 +24,10 @@
         "question": "Cos'è l'effetto Mandela?",
         "category": "note",
         "label": "pertinente",
-        "expected_source": "effetto-mandela.md"
+        "expected_source": [
+            "effetto-mandela.md",
+            "sistemi-auto-organizzati.md"
+        ]
     },
     {
         "question": "Perché la gente ricorda cose mai accadute?",

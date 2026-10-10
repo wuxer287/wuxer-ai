@@ -68,8 +68,8 @@ Dipendenze Python principali: `sentence-transformers`, `numpy`, `pypdf`, `openai
 ## Installazione
 
 ```bash
-git clone https://github.com/ZhoupengWu/personal-ai-knowledge.git
-cd personal-ai-knowledge
+git clone https://github.com/wuxer287/wuxer-ai.git
+cd wuxer-ai
 
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
