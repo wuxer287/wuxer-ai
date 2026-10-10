@@ -1,10 +1,12 @@
-# Personal AI Knowledge
+# Wuxer AI
 
 Sistema RAG (Retrieval-Augmented Generation) per indicizzare note personali e documenti e interrogarli in linguaggio naturale. L'indicizzazione e la ricerca semantica girano in locale; la risposta finale viene generata da un modello linguistico via API (attualmente DeepSeek), a cui vengono passati solo i frammenti di testo recuperati per quella domanda.
 
+> Questo repository è un fork di [**personal-ai-knowledge**](https://github.com/ZhoupengWu/personal-ai-knowledge)
+
 ## Indice
 
-- [Personal AI Knowledge](#personal-ai-knowledge)
+- [Wuxer AI](#wuxer-ai)
   - [Indice](#indice)
   - [Caratteristiche](#caratteristiche)
   - [Come funziona](#come-funziona)
@@ -171,7 +173,7 @@ Per ogni categoria il comando stampa i punteggi per domanda, i margini tra perti
 ## Struttura del progetto
 
 ```
-personal-ai-knowledge/
+wuxer-ai/
 ├── src/
 │   ├── cli.py          # entry point, argomenti, orchestrazione
 │   ├── chunking.py     # chunking per parole o per frasi
