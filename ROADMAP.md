@@ -19,6 +19,7 @@ Stato del progetto e prossimi passi. Per cosa fa oggi il sistema e come si usa v
 - [x] Re-ranking opzionale con cross-encoder (`--rerank`), con soglie per categoria calibrate con `eval --rerank`
 - [x] EmbeddingGemma 2 al posto di mpnet ed e5, con colonna `category` nello storage e soglie ricalibrate
 - [x] Soglie del re-ranker riverificate con EmbeddingGemma 2 (`note` 0.06, `programma` 0.03)
+- [x] `sqlite-vec` per la ricerca vettoriale nel database (tabella `chunk_vectors` partizionata per categoria), con punteggi e soglie invariati
 
 ## Prossimo step
 
@@ -30,7 +31,6 @@ Stato del progetto e prossimi passi. Per cosa fa oggi il sistema e come si usa v
 
 - [ ] Costo cumulativo delle query
 - [ ] Modalità interattiva (REPL) per non ricaricare il modello a ogni comando
-- [ ] `sqlite-vec` per la ricerca vettoriale nel database (se il volume lo giustifica)
 - [ ] Watcher sulla cartella indicizzata
 - [ ] Cronologia conversazionale e streaming della risposta
 - [ ] Multi-query

@@ -6,7 +6,7 @@ from pathlib import Path
 from itertools import chain
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-from storage import createConnection, createTableChunk, insertChunk, getChunksByCategory, deleteChunksBySource, createTableLog, logQuery, saveAnswerToFile
+from storage import createConnection, createTableChunk, insertChunk, countChunksByCategory, deleteChunksBySource, createTableLog, logQuery, saveAnswerToFile
 from chunking import chunkText, chunkTextBySentence
 from embedding import loadModel, embeddedTexts
 from search import search
@@ -247,8 +247,8 @@ if args.command == "index":
     hf_model_name = CATEGORY_MODELS[args.category]["model"]
 
     model = loadModel(hf_model_name)
-    conn_chunk = createConnection("test.db")
-    createTableChunk(conn_chunk)
+    conn_chunk = createConnection("test.db", vector=True)
+    createTableChunk(conn_chunk, model.get_sentence_embedding_dimension())
 
     for file_path in files:
         deleteChunksBySource(conn_chunk, file_path.name)
@@ -282,8 +282,8 @@ elif args.command == "query":
 
     model = loadModel(hf_model_name)
 
-    conn_chunk = createConnection("test.db")
-    createTableChunk(conn_chunk)
+    conn_chunk = createConnection("test.db", vector=True)
+    createTableChunk(conn_chunk, model.get_sentence_embedding_dimension())
 
     conn_log = createConnection("logs_v2.db")
     createTableLog(conn_log)
@@ -291,9 +291,8 @@ elif args.command == "query":
     client = createClient(api_key)
 
     embed_query = embeddedTexts(model, [query], hf_model_name, "query")
-    chunks = getChunksByCategory(conn_chunk, category)
 
-    if chunks is None:
+    if countChunksByCategory(conn_chunk, category) == 0:
         print("Non ci sono valori per questa ricerca")
 
         sys.exit(0)
@@ -303,11 +302,11 @@ elif args.command == "query":
     if args.rerank:
         rerank_min = args.rerank_min if args.rerank_min is not None else CATEGORY_MODELS[category]["rerank_min"]
         reranker = loadReranker()
-        candidates = search(embed_query[0], chunks, max(args.pool, args.top_k), -1.0)
+        candidates = search(conn_chunk, embed_query[0], category, max(args.pool, args.top_k), -1.0)
         reranked = rerank(reranker, query, candidates, args.top_k)
         result = [chunk for chunk in reranked if chunk[1] >= rerank_min]
     else:
-        result = search(embed_query[0], chunks, args.top_k, min_sim)
+        result = search(conn_chunk, embed_query[0], category, args.top_k, min_sim)
 
     if args.show_chunks:
         print(result)
@@ -346,8 +345,7 @@ elif args.command == "eval":
 
         sys.exit(1)
 
-    conn_chunk = createConnection("test.db")
-    createTableChunk(conn_chunk)
+    conn_chunk = createConnection("test.db", vector=True)
 
     reranker = loadReranker() if args.rerank else None
     models = {}
@@ -355,23 +353,24 @@ elif args.command == "eval":
     for category, group in groupByCategory(questions).items():
         hf_model_name = CATEGORY_MODELS[category]["model"]
         threshold = CATEGORY_MODELS[category]["min_sim"]
-        chunks = getChunksByCategory(conn_chunk, category)
-
-        if chunks is None:
-            print(f"Categoria {category}: nessun chunk indicizzato, viene saltato")
-
-            continue
 
         if hf_model_name not in models:
             models[hf_model_name] = loadModel(hf_model_name)
 
         model = models[hf_model_name]
-        results = scoreQuestions(model, hf_model_name, chunks, group, args.top_k)
+        createTableChunk(conn_chunk, model.get_sentence_embedding_dimension())
+
+        if countChunksByCategory(conn_chunk, category) == 0:
+            print(f"Categoria {category}: nessun chunk indicizzato, viene saltato")
+
+            continue
+
+        results = scoreQuestions(conn_chunk, model, hf_model_name, category, group, args.top_k)
         summary = summarize(results, threshold)
         printReport(category, results, summary, args.verbose)
 
         if reranker is not None:
-            rr_results = scoreQuestions(model, hf_model_name, chunks, group, args.top_k, reranker, args.pool)
+            rr_results = scoreQuestions(conn_chunk, model, hf_model_name, category, group, args.top_k, reranker, args.pool)
             rr_threshold = args.rerank_min if args.rerank_min is not None else CATEGORY_MODELS[category]["rerank_min"]
             rr_summary = summarize(rr_results, rr_threshold)
             printReport(category, rr_results, rr_summary, args.verbose, RERANK_SWEEP, "re-ranking")

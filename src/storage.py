@@ -1,11 +1,19 @@
 import sqlite3
+import sqlite_vec
 import numpy as np
 from pathlib import Path
 
-def createConnection(path: str):
-    return sqlite3.connect(path)
+def createConnection(path: str, vector: bool = False):
+    conn = sqlite3.connect(path)
 
-def createTableChunk(conn: sqlite3.Connection) -> None:
+    if vector:
+        conn.enable_load_extension(True)
+        sqlite_vec.load(conn)
+        conn.enable_load_extension(False)
+
+    return conn
+
+def createTableChunk(conn: sqlite3.Connection, dim: int) -> None:
     cur = conn.cursor()
 
     cur.execute("""
@@ -16,6 +24,14 @@ def createTableChunk(conn: sqlite3.Connection) -> None:
             source TEXT,
             hf_model_name TEXT,
             category TEXT
+        )
+    """)
+
+    cur.execute(f"""
+        CREATE VIRTUAL TABLE IF NOT EXISTS chunk_vectors USING vec0(
+            chunk_id INTEGER PRIMARY KEY,
+            category TEXT PARTITION KEY,
+            embedding FLOAT[{dim}] DISTANCE_METRIC=cosine
         )
     """)
 
@@ -30,54 +46,28 @@ def insertChunk(conn: sqlite3.Connection, text: str, embedding: np.ndarray, sour
         VALUES (?, ?, ?, ?, ?)
     """, (text, embedding.tobytes(), source, hf_model_name, category))
 
+    chunk_id = cur.lastrowid
+
+    cur.execute("""
+        INSERT INTO chunk_vectors (chunk_id, category, embedding)
+        VALUES (?, ?, ?)
+    """, (chunk_id, category, embedding.tobytes()))
+
     cur.close()
     conn.commit()
 
-def getAllChunks(conn: sqlite3.Connection) -> list[tuple] | None:
-    cur = conn.cursor()
-
-    cur.execute("""
-        SELECT text, embedding, source, hf_model_name
-        FROM chunks
-    """)
-
-    data = cur.fetchall()
-
-    if not data:
-        return None
-
-    new_data = []
-
-    for i in range(len(data)):
-        blob = np.frombuffer(data[i][1], dtype=np.float32)
-        new_data.append((data[i][0], blob, data[i][2], data[i][3]))
-
-    return new_data
-
-def getChunksByCategory(conn: sqlite3.Connection, category: str) -> list[tuple] | None:
-    cur = conn.cursor()
-
-    cur.execute("""
-        SELECT text, embedding, source, hf_model_name
-        FROM chunks
-        WHERE category = ?
-    """, (category,))
-
-    data = cur.fetchall()
-
-    if not data:
-        return None
-
-    new_data = []
-
-    for i in range(len(data)):
-        blob = np.frombuffer(data[i][1], dtype=np.float32)
-        new_data.append((data[i][0], blob, data[i][2], data[i][3]))
-
-    return new_data
+def countChunksByCategory(conn: sqlite3.Connection, category: str) -> int:
+    return conn.execute("SELECT COUNT(*) FROM chunks WHERE category = ?", (category,)).fetchone()[0]
 
 def deleteChunksBySource(conn: sqlite3.Connection, source: str) -> None:
     cur = conn.cursor()
+
+    ids = [row[0] for row in cur.execute("SELECT id FROM chunks WHERE source = ?", (source,))]
+
+    cur.executemany("""
+        DELETE FROM chunk_vectors
+        WHERE chunk_id = ?
+    """, [(i,) for i in ids])
 
     cur.execute("""
         DELETE FROM chunks

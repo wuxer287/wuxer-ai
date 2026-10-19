@@ -50,22 +50,22 @@ Sistema RAG (Retrieval-Augmented Generation) per indicizzare note personali e do
 **Indicizzazione** (`index`):
 
 ```
-File (.md/.pdf) → lettura → chunking → embedding → SQLite
+File (.md/.pdf) → lettura → chunking → embedding → SQLite (testo e vettori)
 ```
 
 **Interrogazione** (`query`):
 
 ```
-Domanda → embedding → ricerca per similarità (top-k, soglia) → LLM → risposta + fonti + log
+Domanda → embedding → ricerca vettoriale in SQLite (top-k, soglia) → LLM → risposta + fonti + log
 ```
 
 ## Requisiti
 
-- Python 3.12+
+- Python 3.13+ compilato con il supporto alle estensioni SQLite, necessario a `sqlite-vec`. Si verifica con `python -c "import sqlite3; print(hasattr(sqlite3.connect(':memory:'), 'enable_load_extension'))"`, che deve stampare `True` (una build dai sorgenti lo richiede con `./configure --enable-loadable-sqlite-extensions`)
 - Un account DeepSeek con API key, o un altro provider con API compatibile OpenAI (da adattare in `generation.py`)
 - Una **GPU è consigliata per l'indicizzazione**: su una GPU T4 (Google Colab) EmbeddingGemma 2 indicizza circa 140 chunk di `note` in 3,5 secondi e circa 410 chunk di `programma` in 19 secondi. Il re-ranking opzionale (`--rerank`) è più lento senza GPU.
 
-Dipendenze Python principali: `sentence-transformers`, `numpy`, `pypdf`, `openai`, `python-dotenv`.
+Dipendenze Python principali: `sentence-transformers`, `sqlite-vec`, `numpy`, `pypdf`, `openai`, `python-dotenv`.
 
 ## Installazione
 
@@ -178,8 +178,8 @@ wuxer-ai/
 │   ├── cli.py          # entry point, argomenti, orchestrazione
 │   ├── chunking.py     # chunking per parole o per frasi
 │   ├── embedding.py    # caricamento modelli, prefissi, generazione embedding
-│   ├── storage.py      # SQLite: chunk, log delle query, salvataggio risposte
-│   ├── search.py       # similarità coseno e ranking
+│   ├── storage.py      # SQLite: chunk e vettori (sqlite-vec), log delle query, salvataggio risposte
+│   ├── search.py       # ricerca vettoriale (sqlite-vec) e ranking
 │   ├── reranking.py    # re-ranking con cross-encoder
 │   ├── generation.py   # client API, system prompt delle tre modalità
 │   ├── evaluation.py   # calcolo e report per il comando eval
@@ -194,7 +194,7 @@ wuxer-ai/
 └── run.sh
 ```
 
-I database `test.db` (chunk) e `logs_v2.db` (log delle query) vengono creati nella cartella da cui si lancia il comando.
+I database `test.db` (chunk e vettori) e `logs_v2.db` (log delle query) vengono creati nella cartella da cui si lancia il comando.
 
 ## Dettagli tecnici
 
@@ -214,13 +214,13 @@ Tutte le categorie usano `google/embeddinggemma-2` (768 dimensioni, contesto fin
 | `note` | `google/embeddinggemma-2` | 0.735 | predefinito (`--dimension 40 --overlap 1`) |
 | `programma` | `google/embeddinggemma-2` | 0.65 | `--dimension 150 --overlap 1` |
 
-Modello e soglie di ogni categoria sono definiti nel dizionario `CATEGORY_MODELS` in `cli.py`. Ogni chunk viene salvato con il nome del modello e la categoria; la ricerca legge solo i chunk della categoria richiesta. Se si cambia modello, bisogna reindicizzare tutta la categoria: embedding di modelli diversi non sono confrontabili, nemmeno a parità di dimensione del vettore.
+Modello e soglie di ogni categoria sono definiti nel dizionario `CATEGORY_MODELS` in `cli.py`. Ogni chunk viene salvato con il nome del modello e la categoria; la ricerca legge solo i chunk della categoria richiesta. Se si cambia modello, bisogna reindicizzare tutta la categoria: embedding di modelli diversi non sono confrontabili, nemmeno a parità di dimensione del vettore. La dimensione dei vettori è fissata alla creazione di `chunk_vectors` (è letta dal modello): con un modello di dimensione diversa la tabella va ricreata e la categoria reindicizzata.
 
 Ogni modello tronca **in silenzio** il testo oltre il proprio limite di token. Con EmbeddingGemma 2 il limite (8192) è molto più alto dei chunk usati (circa 350 token nel `programma`), quindi il problema non si pone con questi dati.
 
 ### Retrieval
 
-Similarità coseno tra domanda e chunk della categoria, ordinamento decrescente, scarto dei risultati sotto la soglia (quella della categoria o `--min-sim`), primi `--top-k`. Il confronto è calcolato in Python su tutti i chunk della categoria.
+Similarità coseno tra domanda e chunk della categoria, ordinamento decrescente, scarto dei risultati sotto la soglia (quella della categoria o `--min-sim`), primi `--top-k`. La ricerca è eseguita da `sqlite-vec` sulla tabella virtuale `chunk_vectors` (distanza coseno, partizionata per categoria): è una scansione completa dei vettori della categoria, senza indici approssimati. Il punteggio è `1 - distanza`, quindi coincide con il coseno calcolato prima in Python e le soglie non cambiano. `sqlite-vec` restituisce al massimo 4096 risultati per ricerca e `search` rispetta questo limite.
 
 ### Re-ranking
 

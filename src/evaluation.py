@@ -1,4 +1,5 @@
 import json
+import sqlite3
 from embedding import embeddedTexts
 from search import search
 from reranking import rerank
@@ -37,15 +38,15 @@ def groupByCategory(questions: list[dict]) -> dict[str, list[dict]]:
 
     return groups
 
-def scoreQuestions(model, hf_model_name: str, chunks: list[tuple], questions: list[dict], top_k: int, reranker=None, pool: int = 20) -> list[dict]:
+def scoreQuestions(conn: sqlite3.Connection, model, hf_model_name: str, category: str, questions: list[dict], top_k: int, reranker=None, pool: int = 20) -> list[dict]:
     embeddings = embeddedTexts(model, [q["question"] for q in questions], hf_model_name, "query")
     results = []
 
     for q, embedding in zip(questions, embeddings):
         if reranker is None:
-            found = search(embedding, chunks, top_k, -1.0)
+            found = search(conn, embedding, category, top_k, -1.0)
         else:
-            candidates = search(embedding, chunks, max(pool, top_k), -1.0)
+            candidates = search(conn, embedding, category, max(pool, top_k), -1.0)
             found = rerank(reranker, q["question"], candidates, top_k)
 
         results.append({
