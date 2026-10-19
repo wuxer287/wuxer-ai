@@ -248,7 +248,7 @@ if args.command == "index":
 
     model = loadModel(hf_model_name)
     conn_chunk = createConnection("test.db", vector=True)
-    createTableChunk(conn_chunk, model.get_sentence_embedding_dimension())
+    createTableChunk(conn_chunk, model.get_embedding_dimension())
 
     for file_path in files:
         deleteChunksBySource(conn_chunk, file_path.name)
@@ -283,7 +283,7 @@ elif args.command == "query":
     model = loadModel(hf_model_name)
 
     conn_chunk = createConnection("test.db", vector=True)
-    createTableChunk(conn_chunk, model.get_sentence_embedding_dimension())
+    createTableChunk(conn_chunk, model.get_embedding_dimension())
 
     conn_log = createConnection("logs_v2.db")
     createTableLog(conn_log)
@@ -358,7 +358,7 @@ elif args.command == "eval":
             models[hf_model_name] = loadModel(hf_model_name)
 
         model = models[hf_model_name]
-        createTableChunk(conn_chunk, model.get_sentence_embedding_dimension())
+        createTableChunk(conn_chunk, model.get_embedding_dimension())
 
         if countChunksByCategory(conn_chunk, category) == 0:
             print(f"Categoria {category}: nessun chunk indicizzato, viene saltato")
