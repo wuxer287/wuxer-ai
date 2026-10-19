@@ -1,5 +1,5 @@
 sentence-transformers==6.1.0
 sqlite-vec==0.1.9
-openai==3.28.0
+openai==3.35.1
 python-dotenv==1.2.4
-pypdf==6.20.0
+pypdf==6.21.1
