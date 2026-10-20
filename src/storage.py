@@ -20,7 +20,6 @@ def createTableChunk(conn: sqlite3.Connection, dim: int) -> None:
         CREATE TABLE IF NOT EXISTS chunks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             text TEXT,
-            embedding BLOB,
             source TEXT,
             hf_model_name TEXT,
             category TEXT
@@ -42,9 +41,9 @@ def insertChunk(conn: sqlite3.Connection, text: str, embedding: np.ndarray, sour
     cur = conn.cursor()
 
     cur.execute("""
-        INSERT INTO chunks (text, embedding, source, hf_model_name, category)
-        VALUES (?, ?, ?, ?, ?)
-    """, (text, embedding.tobytes(), source, hf_model_name, category))
+        INSERT INTO chunks (text, source, hf_model_name, category)
+        VALUES (?, ?, ?, ?)
+    """, (text, source, hf_model_name, category))
 
     chunk_id = cur.lastrowid
 
