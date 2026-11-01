@@ -1,12 +1,9 @@
 import numpy as np
 from sentence_transformers import CrossEncoder
-
-RERANKER_MODEL = "BAAI/bge-reranker-v2-m3"
-
-MAX_LENGTH = 1024
+from consts import RERANKER_MODEL, RERANKER_MAX_LENGTH
 
 def loadReranker(name: str = RERANKER_MODEL) -> CrossEncoder:
-    return CrossEncoder(name, max_length=MAX_LENGTH)
+    return CrossEncoder(name, max_length=RERANKER_MAX_LENGTH)
 
 def toProbability(scores) -> np.ndarray:
     # A seconda della versione di sentence-transformers il modello restituisce già un valore tra 0 e 1

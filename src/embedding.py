@@ -1,12 +1,6 @@
 import numpy as np
 from sentence_transformers import SentenceTransformer
-
-MODEL_PROMPT_NAMES = {
-    "google/embeddinggemma-2": {
-        "query": "SearchQuery",
-        "index": "Document"
-    }
-}
+from consts import MODEL_PROMPT_NAMES
 
 def loadModel(name: str) -> SentenceTransformer:
     return SentenceTransformer(name)

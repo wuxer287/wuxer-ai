@@ -1,14 +1,28 @@
-import os
 import sys
 import argparse
 from pathlib import Path
-from dotenv import load_dotenv
 from storage import createConnection, createTableChunk, countChunksByCategory
 from embedding import loadModel
 from generation import createClient
-from evaluation import loadQuestions, groupByCategory, scoreQuestions, summarize, printReport, RERANK_SWEEP
+from evaluation import loadQuestions, groupByCategory, scoreQuestions, summarize, printReport
 from reranking import loadReranker
-from service import Engine, CATEGORY_MODELS, EmptyCategoryError, listIndexableFiles, indexFiles, answerQuestion
+from service import Engine, EmptyCategoryError, listIndexableFiles, indexFiles, answerQuestion
+from consts import (
+    CATEGORY_MODELS,
+    DB_PATH,
+    DEEPSEEK_API_KEY,
+    DEEPSEEK_MODEL,
+    MODES,
+    STRATEGIES,
+    RERANK_SWEEP,
+    DEFAULT_CATEGORY,
+    DEFAULT_MODE,
+    DEFAULT_TOP_K,
+    DEFAULT_POOL,
+    DEFAULT_DIMENSION,
+    DEFAULT_OVERLAP,
+    DEFAULT_STRATEGY
+)
 
 parser = argparse.ArgumentParser(description="Wuxer AI - indicizza le tue note e fai domande basate sul loro contenuto.")
 subparsers = parser.add_subparsers(dest="command", help="Comando da eseguire.")
@@ -30,7 +44,7 @@ index_parser.add_argument(
 index_parser.add_argument(
     "--dimension",
     type=int,
-    default=40,
+    default=DEFAULT_DIMENSION,
     help="Dimensione del chunk. Con --strategy=word: numero esatto di parole per chunk. "
          "Con --strategy=sentence: numero massimo di parole per chunk (il chunk può superare leggermente questo limite "
          "per includere l'ultima frase intera)."
@@ -39,7 +53,7 @@ index_parser.add_argument(
 index_parser.add_argument(
     "--overlap",
     type=int,
-    default=1,
+    default=DEFAULT_OVERLAP,
     help="Sovrapposizione tra chunk consecutivi, per non prendere contesto ai margini. "
          "Con --strategy=word: espresso in numero di parole. "
          "Con --strategy=sentence: espresso in numero di frasi."
@@ -47,8 +61,8 @@ index_parser.add_argument(
 
 index_parser.add_argument(
     "--strategy",
-    choices=["word", "sentence"],
-    default="sentence",
+    choices=STRATEGIES,
+    default=DEFAULT_STRATEGY,
     help="Metodo di chunking: 'word' taglia per numero fisso di parole (più semplice, può spezzare le frasi); "
          "'sentence' raggruppa frasi intere fino al limite di parole, senza spezzarle (default, consigliato per note in prosa)."
 )
@@ -56,7 +70,7 @@ index_parser.add_argument(
 index_parser.add_argument(
     "--category",
     choices=list(CATEGORY_MODELS.keys()),
-    default="note",
+    default=DEFAULT_CATEGORY,
     help="Categoria del contenuto: determina il modello di embedding usato per indicizzare i file "
          "(note: testi brevi in prosa; programma: documenti lunghi, come un programma politico). "
          "Usa la stessa categoria in fase di query (default: note)."
@@ -79,14 +93,14 @@ query_parser.add_argument(
 query_parser.add_argument(
     "--top-k",
     type=int,
-    default=5,
+    default=DEFAULT_TOP_K,
     help="Numero massimo di chunk da recuperare e passare al modello come contesto (default: 5)."
 )
 
 query_parser.add_argument(
     "--mode",
-    choices=["strict", "standard", "full"],
-    default="strict",
+    choices=MODES,
+    default=DEFAULT_MODE,
     help="Quanto la risposta può discostarsi dalle informazioni fornite: 'strict' usa solo quelle, "
          "'standard' le integra con conoscenza generale segnalandolo sempre, "
          "'full' integra liberamente senza distinzioni esplicite."
@@ -105,7 +119,7 @@ query_parser.add_argument(
 query_parser.add_argument(
     "--category",
     choices=list(CATEGORY_MODELS.keys()),
-    default="note",
+    default=DEFAULT_CATEGORY,
     help="Categoria su cui cercare: deve coincidere con quella usata in fase di indicizzazione, "
          "perché la ricerca avviene solo tra i chunk di quella categoria (default: note)."
 )
@@ -144,7 +158,7 @@ query_parser.add_argument(
 query_parser.add_argument(
     "--pool",
     type=int,
-    default=20,
+    default=DEFAULT_POOL,
     help="Con --rerank: numero di candidati recuperati dalla ricerca e passati al re-ranker (default: 20)."
 )
 
@@ -168,7 +182,7 @@ eval_parser.add_argument(
 eval_parser.add_argument(
     "--top-k",
     type=int,
-    default=5,
+    default=DEFAULT_TOP_K,
     help="Numero di chunk analizzati per ogni domanda: tutti i loro punteggi entrano nel riepilogo (default: 5)."
 )
 
@@ -187,7 +201,7 @@ eval_parser.add_argument(
 eval_parser.add_argument(
     "--pool",
     type=int,
-    default=20,
+    default=DEFAULT_POOL,
     help="Numero di candidati presi dalla ricerca e passati al re-ranker (default: 20)."
 )
 
@@ -228,18 +242,13 @@ if args.command == "index":
 
     print("DONE")
 elif args.command == "query":
-    load_dotenv()
-
-    api_key = os.getenv("DEEPSEEK_API_KEY")
-    api_model_name = os.getenv("DEEPSEEK_MODEL", "deepseek-flash")
-
-    if api_key is None:
+    if DEEPSEEK_API_KEY is None:
         print("Manca l'api key")
 
         sys.exit(1)
 
     try:
-        res = answerQuestion(Engine(), createClient(api_key), api_model_name, args.text, args.category, args.mode, args.temperature, top_k=args.top_k, min_sim=args.min_sim, use_rerank=args.rerank, rerank_min=args.rerank_min, pool=args.pool)
+        res = answerQuestion(Engine(), createClient(DEEPSEEK_API_KEY), DEEPSEEK_MODEL, args.text, args.category, args.mode, args.temperature, top_k=args.top_k, min_sim=args.min_sim, use_rerank=args.rerank, rerank_min=args.rerank_min, pool=args.pool)
     except EmptyCategoryError:
         print("Non ci sono valori per questa ricerca")
 
@@ -267,7 +276,7 @@ elif args.command == "eval":
 
         sys.exit(1)
 
-    conn_chunk = createConnection("test.db", vector=True)
+    conn_chunk = createConnection(DB_PATH, vector=True)
 
     reranker = loadReranker() if args.rerank else None
     models = {}

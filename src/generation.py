@@ -1,4 +1,5 @@
 from openai import OpenAI
+from consts import TEMPERATURE, DEEPSEEK_BASE_URL
 
 SYSTEM_PROMPT = {
     "strict": """Sei un assistente personale che risponde basandosi esclusivamente sulle informazioni fornite di seguito tra <context> </context>.
@@ -25,16 +26,10 @@ Regole per rispondere:
 - Rispondi in modo naturale, diretto e completo.""",
 }
 
-TEMPERATURE = {
-    "strict": 0.0,
-    "standard": 0.3,
-    "full": 0.6
-}
-
 def createClient(api_key: str) -> OpenAI:
     return OpenAI(
         api_key=api_key,
-        base_url="https://api.deepseek.com"
+        base_url=DEEPSEEK_BASE_URL
     )
 
 def generateAnswer(client: OpenAI, model_name: str, chunks: list[tuple], question: str, mode: str, temperature: float | None):

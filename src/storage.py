@@ -1,7 +1,7 @@
 import sqlite3
 import sqlite_vec
 import numpy as np
-from pathlib import Path
+from consts import ANSWERS_DIR
 
 def createConnection(path: str, vector: bool = False):
     conn = sqlite3.connect(path)
@@ -117,8 +117,7 @@ def saveAnswerToFile(query: str, answer: str, timestamp: str, sources: str, mode
     safe_timestamp = timestamp.replace(":", "_")
     filename = f"query_{safe_timestamp}_v2.txt"
 
-    folder = Path("log_data_answer")
-    folder.mkdir(exist_ok=True)
+    ANSWERS_DIR.mkdir(exist_ok=True)
 
-    file_path = folder / filename
+    file_path = ANSWERS_DIR / filename
     file_path.write_text(f"Domanda: {query}\n\nRisposta:\n{answer}\n\n[{sources}]\nMode: {mode}\nCategory: {category}", encoding="utf-8")

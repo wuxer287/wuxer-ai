@@ -1,7 +1,6 @@
 import sqlite3
 import numpy as np
-
-MAX_K = 4096
+from consts import MAX_K
 
 def search(conn: sqlite3.Connection, query_embedding: np.ndarray, category: str, top_k: int, min_sim: float) -> list[tuple]:
     rows = conn.execute("""

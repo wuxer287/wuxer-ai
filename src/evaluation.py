@@ -3,12 +3,7 @@ import sqlite3
 from embedding import embeddedTexts
 from search import search
 from reranking import rerank
-
-LABELS = ("pertinente", "borderline", "fuori_tema")
-REQUIRED_FIELDS = ("question", "category", "label")
-
-# i punteggi del re-ranker sono vicini a 0 o a 1: soglie a passi irregolari mostrano meglio dove cade il salto
-RERANK_SWEEP = [0.01, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9]
+from consts import LABELS, REQUIRED_FIELDS
 
 def loadQuestions(path: str, valid_categories: list[str]) -> list[dict]:
     with open(path, encoding="utf-8") as f:

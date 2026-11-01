@@ -11,28 +11,27 @@ from search import search
 from readers import readFile
 from reranking import loadReranker, rerank
 from generation import generateAnswer
-from evaluation import LABELS, RERANK_SWEEP, groupByCategory, scoreQuestions, summarize, sweep, sweepThresholds
-
-EMBEDDING_MODEL = "google/embeddinggemma-2"
-
-CATEGORY_MODELS = {
-    "note": {
-        "model": EMBEDDING_MODEL,
-        "min_sim": 0.735,
-        "rerank_min": 0.06
-    },
-    "programma": {
-        "model": EMBEDDING_MODEL,
-        "min_sim": 0.65,
-        "rerank_min": 0.03
-    }
-}
+from evaluation import groupByCategory, scoreQuestions, summarize, sweep, sweepThresholds
+from consts import (
+    CATEGORY_MODELS,
+    LABELS,
+    RERANK_SWEEP,
+    DB_PATH,
+    LOG_DB_PATH,
+    DEFAULT_CATEGORY,
+    DEFAULT_MODE,
+    DEFAULT_DIMENSION,
+    DEFAULT_OVERLAP,
+    DEFAULT_TOP_K,
+    DEFAULT_STRATEGY,
+    DEFAULT_POOL
+)
 
 class EmptyCategoryError(Exception):
     pass
 
 class Engine:
-    def __init__(self, db_path: str = "test.db", log_path: str = "logs_v2.db"):
+    def __init__(self, db_path: str = DB_PATH, log_path: str = LOG_DB_PATH):
         self.db_path = db_path
         self.log_path = log_path
         self._models = {}
@@ -50,10 +49,16 @@ class Engine:
 
         return self._reranker
 
+    def preload(self) -> None:
+        for name in {config["model"] for config in CATEGORY_MODELS.values()}:
+            self.getModel(name)
+
+        self.getReranker()
+
 def listIndexableFiles(folder: Path) -> list[Path]:
     return sorted(chain(folder.glob("*.md"), folder.glob("*.pdf")))
 
-def indexFiles(engine: Engine, files: list[Path], category: str, dimension: int = 40, overlap: int = 1, strategy: str = "sentence", on_progress = None) -> int:
+def indexFiles(engine: Engine, files: list[Path], category: str, dimension: int = DEFAULT_DIMENSION, overlap: int = DEFAULT_OVERLAP, strategy: str = DEFAULT_STRATEGY, on_progress = None) -> int:
     hf_model_name = CATEGORY_MODELS[category]["model"]
     model = engine.getModel(hf_model_name)
     conn = createConnection(engine.db_path, vector=True)
@@ -95,7 +100,7 @@ def listSources(engine: Engine) -> list[dict] | list:
     return [{"category": category, "source": source, "chunks": count} for category, source, count in rows]
 
 
-def retrieve(engine: Engine, query: str, category: str, top_k: int = 5, min_sim: float | None = None, use_rerank: bool = False, rerank_min: float | None = None, pool: int = 20) -> list[tuple]:
+def retrieve(engine: Engine, query: str, category: str, top_k: int = DEFAULT_TOP_K, min_sim: float | None = None, use_rerank: bool = False, rerank_min: float | None = None, pool: int = DEFAULT_POOL) -> list[tuple]:
     config = CATEGORY_MODELS[category]
     hf_model_name = config["model"]
     model = engine.getModel(hf_model_name)
@@ -122,7 +127,7 @@ def retrieve(engine: Engine, query: str, category: str, top_k: int = 5, min_sim:
     finally:
         conn.close()
 
-def answerQuestion(engine: Engine, client, api_model_name: str, query: str, category: str = "note", mode: str = "strict", temperature: float | None = None, **retrieve_options) -> dict:
+def answerQuestion(engine: Engine, client, api_model_name: str, query: str, category: str = DEFAULT_CATEGORY, mode: str = DEFAULT_MODE, temperature: float | None = None, **retrieve_options) -> dict:
     start_time = time.time()
     result = retrieve(engine, query, category, **retrieve_options)
     chunks = [{"text": c[0], "score": float(c[1]), "source": c[2]} for c in result]
@@ -169,7 +174,7 @@ def readQuestionsFile(path: str) -> list[dict]:
     with open(path, encoding="utf-8") as f:
         return json.load(f)
 
-def evaluate(engine: Engine, questions: list[dict], top_k: int = 5, use_rerank: bool = False, pool: int = 20, rerank_min: float | None = None) -> dict:
+def evaluate(engine: Engine, questions: list[dict], top_k: int = DEFAULT_TOP_K, use_rerank: bool = False, pool: int = DEFAULT_POOL, rerank_min: float | None = None) -> dict:
     reports = {}
     conn = createConnection(engine.db_path, vector=True)
 
@@ -212,7 +217,7 @@ def evaluate(engine: Engine, questions: list[dict], top_k: int = 5, use_rerank: 
 
     return reports
 
-def probeQuestion(engine: Engine, question: str, category: str, top_k: int = 5, pool: int = 20) -> dict:
+def probeQuestion(engine: Engine, question: str, category: str, top_k: int = DEFAULT_TOP_K, pool: int = DEFAULT_POOL) -> dict:
     config = CATEGORY_MODELS[category]
     hf_model_name = config["model"]
     model = engine.getModel(hf_model_name)

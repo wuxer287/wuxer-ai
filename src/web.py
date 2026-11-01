@@ -1,10 +1,9 @@
-import os
 import secrets
 import shutil
 import threading
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
-from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -14,7 +13,6 @@ from generation import createClient
 from evaluation import loadQuestions
 from service import (
     Engine,
-    CATEGORY_MODELS,
     EmptyCategoryError,
     listIndexableFiles,
     indexFiles,
@@ -25,56 +23,86 @@ from service import (
     addQuestion,
     readQuestionsFile
 )
-
-load_dotenv()
-
-PASSWORD = os.getenv("WEB_PASSWORD")
-API_MODEL_NAME = os.getenv("DEEPSEEK_MODEL", "deepseek-flash")
-QUESTIONS_PATH = "eval/questions.json"
-UPLOAD_DIR = Path("uploads")
-WEB_DIR = Path(__file__).parent.parent / "web"
-MODES = ("strict", "standard", "full")
+from consts import (
+    CATEGORY_MODELS,
+    DEEPSEEK_API_KEY,
+    DEEPSEEK_MODEL,
+    WEB_PASSWORD,
+    MODES,
+    STRATEGIES,
+    LABELS,
+    QUESTIONS_PATH,
+    UPLOAD_DIR,
+    WEB_DIR,
+    DEFAULT_CATEGORY,
+    DEFAULT_MODE,
+    DEFAULT_TOP_K,
+    DEFAULT_POOL,
+    DEFAULT_STRATEGY,
+    DEFAULT_DIMENSION,
+    DEFAULT_OVERLAP
+)
 
 security = HTTPBasic(auto_error=False)
 
 def checkAuth(credentials: HTTPBasicCredentials | None = Depends(security)) -> None:
-    if PASSWORD is None:
+    if WEB_PASSWORD is None:
         return
 
-    if credentials is None or not secrets.compare_digest(credentials.password.encode(), PASSWORD.encode()):
+    if credentials is None or not secrets.compare_digest(credentials.password.encode(), WEB_PASSWORD.encode()):
         raise HTTPException(401, "Password richiesta", headers={"WWW-Authenticate": "Basic"})
 
-app = FastAPI(dependencies=[Depends(checkAuth)])
 engine = Engine()
 
 model_lock = threading.Lock()
 questions_lock = threading.Lock()
 jobs: dict[str, dict] = {}
 client = None
+models_state = {
+    "ready": False,
+    "error": None
+}
+
+def loadModels() -> None:
+    try:
+        with model_lock:
+            engine.preload()
+
+        models_state["ready"] = True
+    except Exception as e:
+        models_state["error"] = f"{type(e).__name__}: {e}"
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    threading.Thread(target=loadModels, daemon=True).start()
+
+    yield
+
+app = FastAPI(dependencies=[Depends(checkAuth)], lifespan=lifespan)
 
 
 class QueryRequest(BaseModel):
     text: str
-    category: str = "note"
-    mode: str = "strict"
-    top_k: int = 5
+    category: str = DEFAULT_CATEGORY
+    mode: str = DEFAULT_MODE
+    top_k: int = DEFAULT_TOP_K
     rerank: bool = False
-    pool: int = 20
+    pool: int = DEFAULT_POOL
     min_sim: float | None = None
     rerank_min: float | None = None
     temperature: float | None = None
 
 class EvalRequest(BaseModel):
-    top_k: int = 5
+    top_k: int = DEFAULT_TOP_K
     rerank: bool = True
-    pool: int = 20
+    pool: int = DEFAULT_POOL
     rerank_min: float | None = None
 
 class ProbeRequest(BaseModel):
     question: str
-    category: str = "note"
-    top_k: int = 5
-    pool: int = 20
+    category: str = DEFAULT_CATEGORY
+    top_k: int = DEFAULT_TOP_K
+    pool: int = DEFAULT_POOL
 
 class QuestionRequest(BaseModel):
     question: str
@@ -86,18 +114,23 @@ def getClient() -> OpenAI:
     global client
 
     if client is None:
-        api_key = os.getenv("DEEPSEEK_API_KEY")
-
-        if not api_key:
+        if not DEEPSEEK_API_KEY:
             raise HTTPException(500, "Manca DEEPSEEK_API_KEY")
 
-        client = createClient(api_key)
+        client = createClient(DEEPSEEK_API_KEY)
 
     return client
 
 def checkCategory(category: str) -> None:
     if category not in CATEGORY_MODELS:
         raise HTTPException(400, "Categoria sconosciuta")
+
+def checkReady() -> None:
+    if models_state["error"]:
+        raise HTTPException(500, f"Caricamento dei modelli fallito: {models_state['error']}")
+
+    if not models_state["ready"]:
+        raise HTTPException(503, "I modelli sono ancora in caricamento")
 
 def startJob(work) -> str:
     job_id = uuid.uuid4().hex[:8]
@@ -145,6 +178,17 @@ def config():
                 "min_sim": c["min_sim"],
                 "rerank_min": c["rerank_min"]
             } for name, c in CATEGORY_MODELS.items()
+        },
+        "modes": MODES,
+        "strategies": STRATEGIES,
+        "labels": LABELS,
+        "defaults": {
+            "category": DEFAULT_CATEGORY,
+            "mode": DEFAULT_MODE,
+            "top_k": DEFAULT_TOP_K,
+            "strategy": DEFAULT_STRATEGY,
+            "dimension": DEFAULT_DIMENSION,
+            "overlap": DEFAULT_OVERLAP
         }
     }
 
@@ -160,7 +204,8 @@ def sources():
     return listSources(engine)
 
 @app.post("/api/index")
-def index(category: str = Form("note"), dimension: int = Form(40), overlap: int = Form(1), strategy: str = Form("sentence"), folder: str = Form(""), files: list[UploadFile] = File(default=[])):
+def index(category: str = Form(DEFAULT_CATEGORY), dimension: int = Form(DEFAULT_DIMENSION), overlap: int = Form(DEFAULT_OVERLAP), strategy: str = Form(DEFAULT_STRATEGY), folder: str = Form(""), files: list[UploadFile] = File(default=[])):
+    checkReady()
     checkCategory(category)
 
     if strategy not in ("word", "sentence"):
@@ -218,12 +263,14 @@ def query(req: QueryRequest):
 
     try:
         with model_lock:
-            return answerQuestion(engine, getClient(), API_MODEL_NAME, req.text, req.category, req.mode, req.temperature, top_k=req.top_k, min_sim=req.min_sim, use_rerank=req.rerank, rerank_min=req.rerank_min, pool=req.pool)
+            return answerQuestion(engine, getClient(), DEEPSEEK_MODEL, req.text, req.category, req.mode, req.temperature, top_k=req.top_k, min_sim=req.min_sim, use_rerank=req.rerank, rerank_min=req.rerank_min, pool=req.pool)
     except EmptyCategoryError:
         raise HTTPException(404, "Nessun contenuto indicizzato per questa categoria")
 
 @app.post("/api/eval")
 def runEval(req: EvalRequest):
+    checkReady()
+
     try:
         with questions_lock:
             questions = loadQuestions(QUESTIONS_PATH, list(CATEGORY_MODELS.keys()))
@@ -236,6 +283,7 @@ def runEval(req: EvalRequest):
 
 @app.post("/api/probe")
 def probe(req: ProbeRequest):
+    checkReady()
     checkCategory(req.category)
 
     try:
