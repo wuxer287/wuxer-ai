@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Menu per lanciare i comandi di Personal AI Knowledge.
+# Menu per lanciare i comandi di Wuxer AI.
 #
 # Uso interattivo:  ./run.sh
 # Uso diretto:      ./run.sh <numero> [argomenti del comando]
@@ -11,6 +11,7 @@
 # Numeri: 1 = index, 2 = query, 3 = eval
 
 # Si lavora sempre dalla radice del repo, dove stanno anche test.db e logs_v2.db
+
 cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
 
 PYTHON="${PYTHON:-python3}"
@@ -108,7 +109,7 @@ showHelp() {
 showMenu() {
     echo
     echo "=============================="
-    echo "  Personal AI Knowledge"
+    echo "  Wuxer AI"
     echo "=============================="
     echo "  1) Indicizza una cartella"
     echo "  2) Fai una domanda"

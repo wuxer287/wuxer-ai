@@ -1,36 +1,16 @@
 import os
 import sys
-import time
 import argparse
 from pathlib import Path
-from itertools import chain
-from datetime import datetime, timezone
 from dotenv import load_dotenv
-from storage import createConnection, createTableChunk, insertChunk, countChunksByCategory, deleteChunksBySource, createTableLog, logQuery, saveAnswerToFile
-from chunking import chunkText, chunkTextBySentence
-from embedding import loadModel, embeddedTexts
-from search import search
-from generation import createClient, generateAnswer
-from readers import readFile
+from storage import createConnection, createTableChunk, countChunksByCategory
+from embedding import loadModel
+from generation import createClient
 from evaluation import loadQuestions, groupByCategory, scoreQuestions, summarize, printReport, RERANK_SWEEP
-from reranking import loadReranker, rerank
+from reranking import loadReranker
+from service import Engine, CATEGORY_MODELS, EmptyCategoryError, listIndexableFiles, indexFiles, answerQuestion
 
-EMBEDDING_MODEL = "google/embeddinggemma-2"
-
-CATEGORY_MODELS = {
-    "note": {
-        "model": EMBEDDING_MODEL,
-        "min_sim": 0.735,
-        "rerank_min": 0.06
-    },
-    "programma": {
-        "model": EMBEDDING_MODEL,
-        "min_sim": 0.65,
-        "rerank_min": 0.03
-    }
-}
-
-parser = argparse.ArgumentParser(description="Personal AI Knowledge - indicizza le tue note e fai domande basate sul loro contenuto.")
+parser = argparse.ArgumentParser(description="Wuxer AI - indicizza le tue note e fai domande basate sul loro contenuto.")
 subparsers = parser.add_subparsers(dest="command", help="Comando da eseguire.")
 
 #
@@ -234,33 +214,17 @@ if args.command == "index":
 
         sys.exit(1)
 
-    files = list(chain(folder.glob("*.md"), folder.glob("*.pdf")))
-    total_counter = len(files)
+    files = listIndexableFiles(folder)
 
-    if total_counter == 0:
+    if len(files) == 0:
         print("Non ci sono file da indicizzare")
 
         sys.exit(1)
 
-    counter = 0
-    strategy = args.strategy
-    hf_model_name = CATEGORY_MODELS[args.category]["model"]
+    def printProgress(number, total, name):
+        print(f"[{number}/{total}] file indexed ({name})")
 
-    model = loadModel(hf_model_name)
-    conn_chunk = createConnection("test.db", vector=True)
-    createTableChunk(conn_chunk, model.get_embedding_dimension())
-
-    for file_path in files:
-        deleteChunksBySource(conn_chunk, file_path.name)
-        text = readFile(file_path)
-        chunked_text = chunkText(text, args.dimension, args.overlap) if strategy == "word" else chunkTextBySentence(text, args.dimension, args.overlap)
-        embed_chunk = embeddedTexts(model, chunked_text, hf_model_name, "index")
-
-        for i in range(len(chunked_text)):
-            insertChunk(conn_chunk, chunked_text[i], embed_chunk[i], file_path.name, hf_model_name, args.category)
-
-        counter += 1
-        print(f"[{counter}/{total_counter}] file indexed ({file_path.name})")
+    indexFiles(Engine(), files, args.category, args.dimension, args.overlap, args.strategy, printProgress)
 
     print("DONE")
 elif args.command == "query":
@@ -274,69 +238,27 @@ elif args.command == "query":
 
         sys.exit(1)
 
-    query = args.text
-    mode = args.mode
-    category = args.category
-    hf_model_name = CATEGORY_MODELS[category]["model"]
-    min_sim = args.min_sim if args.min_sim is not None else CATEGORY_MODELS[category]["min_sim"]
-
-    model = loadModel(hf_model_name)
-
-    conn_chunk = createConnection("test.db", vector=True)
-    createTableChunk(conn_chunk, model.get_embedding_dimension())
-
-    conn_log = createConnection("logs_v2.db")
-    createTableLog(conn_log)
-
-    client = createClient(api_key)
-
-    embed_query = embeddedTexts(model, [query], hf_model_name, "query")
-
-    if countChunksByCategory(conn_chunk, category) == 0:
+    try:
+        res = answerQuestion(Engine(), createClient(api_key), api_model_name, args.text, args.category, args.mode, args.temperature, top_k=args.top_k, min_sim=args.min_sim, use_rerank=args.rerank, rerank_min=args.rerank_min, pool=args.pool)
+    except EmptyCategoryError:
         print("Non ci sono valori per questa ricerca")
 
         sys.exit(0)
 
-    start_time = time.time()
-
-    if args.rerank:
-        rerank_min = args.rerank_min if args.rerank_min is not None else CATEGORY_MODELS[category]["rerank_min"]
-        reranker = loadReranker()
-        candidates = search(conn_chunk, embed_query[0], category, max(args.pool, args.top_k), -1.0)
-        reranked = rerank(reranker, query, candidates, args.top_k)
-        result = [chunk for chunk in reranked if chunk[1] >= rerank_min]
-    else:
-        result = search(conn_chunk, embed_query[0], category, args.top_k, min_sim)
-
     if args.show_chunks:
-        print(result)
+        print(res["chunks"])
 
-    if not result and mode == "strict":
-        print("Nessuna informazione pertinente è stata trovata nelle note...")
+    usage = res["usage"]
 
+    print(f"\n{res["answer"]}")
+
+    if usage is None:
         sys.exit(0)
 
-    sources_set = set([a[2] for a in result])
-    sources: str = ", ".join(source for source in sources_set)
-    answer_text, usage = generateAnswer(client, api_model_name, result, query, mode, args.temperature)
-    elapsed_time = time.time() - start_time
-
-    timestamp = datetime.now(timezone.utc).isoformat()
-    input_tokens = usage.prompt_tokens
-    input_cached_tokens = usage.prompt_tokens_details.cached_tokens or 0
-    output_tokens = usage.completion_tokens
-    reasoning_tokens = usage.completion_tokens_details.reasoning_tokens if usage.completion_tokens_details and usage.completion_tokens_details.reasoning_tokens is not None else 0
-    total_tokens = usage.total_tokens
-
-    logQuery(conn_log, hf_model_name, timestamp, query, args.category, len(result), sources, mode, api_model_name, input_tokens, input_cached_tokens, output_tokens, reasoning_tokens, total_tokens, elapsed_time)
-
-    print(f"\n{answer_text}")
-    print(f"\nFONTI CONSULTATE: [{sources if sources else "nessuna"}]")
+    print(f"\nFONTI CONSULTATE: [{", ".join(res["sources"]) if res["sources"] else "nessuna"}]")
     print("\n=====")
-    print(f"INPUT = {input_tokens} token (CACHED = {input_cached_tokens} token)\nOUTPUT = {output_tokens} token (REASONING = {reasoning_tokens} token)\nTOTAL = {total_tokens} token")
+    print(f"INPUT = {usage["input"]} token (CACHED = {usage["cached"]} token)\nOUTPUT = {usage["output"]} token (REASONING = {usage["reasoning"]} token)\nTOTAL = {usage["total"]} token")
     print("=====")
-
-    saveAnswerToFile(query, answer_text, timestamp, sources, mode, category)
 elif args.command == "eval":
     try:
         questions = loadQuestions(args.file, list(CATEGORY_MODELS.keys()))
