@@ -125,7 +125,7 @@ function updateLoading(id, text) {
 
     box.querySelector(".loading-label").textContent = match[3];
     box.querySelector(".loading-step").textContent = `${match[1]} di ${match[2]}`;
-    bar.style.width = Math.max(5, 100 * (Number(match[1]) - 1) / Number(match[2])) + "%";
+    bar.style.width = (100 * Number(match[1]) / Number(match[2])) + "%";
 }
 
 function hideLoading(id) {
