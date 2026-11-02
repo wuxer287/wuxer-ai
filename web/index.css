@@ -412,9 +412,10 @@ select:focus {
 
 .answer-head {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: .75rem;
+    gap: .5rem .75rem;
     margin-bottom: .75rem;
 }
 
@@ -422,33 +423,41 @@ select:focus {
     margin: 0;
 }
 
+.tools {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-left: auto;
+}
+
 .stats {
     position: relative;
 }
 
-.stats summary,
-.chunks summary {
+.stats summary {
     cursor: pointer;
     list-style: none;
     user-select: none;
 }
 
-.stats summary::-webkit-details-marker,
-.chunks summary::-webkit-details-marker {
+.stats summary::-webkit-details-marker {
     display: none;
 }
 
-.stats summary {
+.stats summary,
+.tool {
     padding: .25rem .75rem;
     border: 1px solid var(--bordo);
     border-radius: 999px;
+    background: var(--superficie);
     color: var(--testo-secondario);
+    font: inherit;
     font-size: .8rem;
     font-weight: 500;
+    cursor: pointer;
 }
 
-.stats summary::after,
-.chunks summary::after {
+.stats summary::after {
     content: "";
     display: inline-block;
     width: .4em;
@@ -461,13 +470,13 @@ select:focus {
 }
 
 .stats summary:hover,
-.stats[open] summary {
+.stats[open] summary,
+.tool:hover {
     border-color: var(--primario);
     color: var(--primario);
 }
 
-.stats[open] summary::after,
-.chunks[open] summary::after {
+.stats[open] summary::after {
     margin-bottom: 0;
     transform: rotate(225deg);
 }
@@ -498,12 +507,51 @@ select:focus {
     text-align: right;
 }
 
-.chunks summary {
-    font-weight: 600;
+/* finestra dei chunk */
+.modal {
+    width: min(720px, calc(100vw - 1.5rem));
+    max-height: 85vh;
+    padding: 0;
+    border: 1px solid var(--bordo);
+    border-radius: var(--raggio);
+    background: var(--superficie);
+    color: var(--testo);
+    box-shadow: 0 20px 60px rgba(26, 24, 48, .25);
 }
 
-.chunks[open] summary {
-    margin-bottom: .9rem;
+.modal[open] {
+    display: flex;
+    flex-direction: column;
+}
+
+.modal::backdrop {
+    background: rgba(26, 24, 48, .45);
+}
+
+.modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .9rem 1.25rem;
+    border-bottom: 1px solid var(--bordo);
+}
+
+.modal-head h2 {
+    margin: 0;
+}
+
+.modal-body {
+    padding: 1rem 1.25rem 1.25rem;
+    overflow-y: auto;
+}
+
+.modal .chunk-text {
+    display: block;
+    overflow: visible;
+    -webkit-line-clamp: none;
+    line-clamp: none;
+    cursor: auto;
 }
 
 .answer {
@@ -780,16 +828,22 @@ select:focus {
 }
 
 .loading {
-    margin: 1rem 0;
+    max-width: 360px;
+    margin: 1.25rem auto;
+}
+
+.card .loading {
+    max-width: none;
+    margin: 1rem 0 0;
 }
 
 .loading-head {
     display: flex;
     justify-content: space-between;
     gap: .75rem;
-    margin-bottom: .4rem;
+    margin-bottom: .35rem;
     color: var(--testo-secondario);
-    font-size: .85rem;
+    font-size: .8rem;
 }
 
 .loading-label {
@@ -804,8 +858,8 @@ select:focus {
 }
 
 .progress {
-    height: 8px;
-    border-radius: 4px;
+    height: 4px;
+    border-radius: 2px;
     background: var(--primario-chiaro);
     overflow: hidden;
 }
@@ -813,7 +867,7 @@ select:focus {
 .bar {
     width: 0;
     height: 100%;
-    border-radius: 4px;
+    border-radius: 2px;
     background: var(--primario);
     transition: width .3s;
 }
@@ -997,6 +1051,7 @@ tr.current td {
 .pills {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: .6rem;
     margin-bottom: .75rem;
 }
@@ -1096,22 +1151,82 @@ tr.current td {
 }
 
 @media (max-width: 700px) {
+    main {
+        padding: 1rem .75rem 2rem;
+    }
+
+    .card {
+        padding: 1rem;
+    }
+
     .cols {
         grid-template-columns: 1fr;
     }
 
-    .tabs {
+    .tabs,
+    .segmented {
         width: 100%;
     }
 
-    .tab {
+    .tab,
+    .subtab {
         flex: 1;
         min-width: 0;
-        padding: .45rem .5rem;
+        padding: .45rem .4rem;
     }
 
-    .toolbar .btn:last-child {
-        flex: 1 1 100%;
+    .subtab {
+        font-size: .85rem;
+        white-space: nowrap;
+    }
+
+    .toolbar {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .toolbar .field.narrow {
+        width: auto;
+    }
+
+    .toolbar .btn:last-child,
+    .toolbar .switch+.btn:last-child {
+        grid-column: 1 / -1;
         margin-left: 0;
+    }
+
+    .toolbar .field:first-child:nth-last-child(2),
+    .toolbar .switch:first-child:nth-last-child(2) {
+        grid-column: 1 / -1;
+    }
+
+    .actions .btn {
+        flex: 1 1 100%;
+    }
+
+    .metrics {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .metric {
+        padding: .6rem .7rem;
+    }
+
+    #e-out .table-wrap table {
+        min-width: 460px;
+    }
+
+    #e-out th,
+    #e-out td {
+        padding: .45rem .4rem;
+        font-size: .8rem;
+    }
+
+    .stats-body {
+        min-width: 13rem;
+    }
+
+    .modal {
+        max-height: 90vh;
     }
 }

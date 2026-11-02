@@ -461,8 +461,7 @@ async function ask() {
     $("q-result").hidden = true;
     $("q-stats").hidden = true;
     $("q-stats").open = false;
-    $("q-chunks-card").hidden = true;
-    $("q-chunks-card").open = false;
+    $("q-chunks-btn").hidden = true;
     $("q-sources").replaceChildren();
     $("q-chunks").replaceChildren();
     showLoading("q-progress");
@@ -483,7 +482,7 @@ async function ask() {
         for (const chunk of data.chunks) $("q-chunks").append(chunkCard(chunk));
 
         $("q-count").textContent = data.chunks.length || "";
-        $("q-chunks-card").hidden = data.chunks.length === 0;
+        $("q-chunks-btn").hidden = data.chunks.length === 0;
     }
     catch (e) {
         $("q-answer").replaceChildren(el("span", e.message, "err"));
@@ -498,6 +497,15 @@ $("q-go").onclick = ask;
 $("q-text").onkeydown = e => {
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !$("q-go").disabled) ask();
 };
+
+$("q-chunks-btn").onclick = () => {
+    $("q-chunks").scrollTop = 0;
+    $("q-chunks-modal").showModal();
+};
+$("q-chunks-close").onclick = () => $("q-chunks-modal").close();
+$("q-chunks-modal").addEventListener("click", e => {
+    if (e.target === $("q-chunks-modal")) $("q-chunks-modal").close();
+});
 
 document.addEventListener("click", e => {
     if (!$("q-stats").contains(e.target)) $("q-stats").open = false;
