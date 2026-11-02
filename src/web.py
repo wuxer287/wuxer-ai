@@ -170,6 +170,10 @@ def style():
 def script():
     return FileResponse(WEB_DIR / "index.js")
 
+@app.get("/api/status")
+def status():
+    return models_state
+
 @app.get("/api/config")
 def config():
     return {
