@@ -1,16 +1,16 @@
 import secrets
-import shutil
 import threading
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import FastAPI, Depends, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, Depends, File, Form, HTTPException, UploadFile, Request
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from openai import OpenAI
 from pydantic import BaseModel
 from generation import createClient
 from evaluation import loadQuestions
+from readers import validateFile
 from service import (
     Engine,
     EmptyCategoryError,
@@ -39,7 +39,11 @@ from consts import (
     DEFAULT_POOL,
     DEFAULT_STRATEGY,
     DEFAULT_DIMENSION,
-    DEFAULT_OVERLAP
+    DEFAULT_OVERLAP,
+    MAX_UPLOAD_MB,
+    MAX_UPLOAD_BYTES,
+    MAX_UPLOAD_FILES,
+    SAFE_NAME
 )
 
 security = HTTPBasic(auto_error=False)
@@ -156,6 +160,43 @@ def startJob(work) -> str:
 
     return job_id
 
+def checkUploadSize(request: Request) -> None:
+    length = request.headers.get("content-length", "")
+
+    if length.isdigit() and int(length) > MAX_UPLOAD_BYTES * MAX_UPLOAD_FILES:
+        raise HTTPException(413, "La richiesta è troppo grande")
+
+def saveUpload(upload: UploadFile) -> Path:
+    name = upload.filename or ""
+
+    if not SAFE_NAME.fullmatch(name):
+        raise HTTPException(400, f"{name or "file senza nome"}: nome non valido (ammessi .md e .pdf con lettere, numeri, spazi e . _ - ( ) )")
+
+    temp = UPLOAD_DIR / f"{uuid.uuid4().hex}{Path(name).suffix}"
+    size = 0
+
+    try:
+        with open(temp, "wb") as out:
+            while chunk := upload.file.read(1024 * 1024):
+                size += len(chunk)
+
+                if size > MAX_UPLOAD_BYTES:
+                    raise HTTPException(413, f"{name}: supera il limite di {MAX_UPLOAD_MB} MB")
+
+                out.write(chunk)
+
+        try:
+            validateFile(temp)
+        except ValueError as e:
+            raise HTTPException(400, f"{name}: {e}")
+
+        target = UPLOAD_DIR / name
+        temp.replace(target)
+
+        return target
+    finally:
+        temp.unlink(missing_ok=True)
+
 
 @app.get("/")
 def home():
@@ -206,7 +247,7 @@ def jobStatus(job_id: str):
 def sources():
     return listSources(engine)
 
-@app.post("/api/index")
+@app.post("/api/index", dependencies=[Depends(checkUploadSize)])
 def index(category: str = Form(DEFAULT_CATEGORY), dimension: int = Form(DEFAULT_DIMENSION), overlap: int = Form(DEFAULT_OVERLAP), strategy: str = Form(DEFAULT_STRATEGY), files: list[UploadFile] = File(default=[])):
     checkReady()
     checkCategory(category)
@@ -214,21 +255,11 @@ def index(category: str = Form(DEFAULT_CATEGORY), dimension: int = Form(DEFAULT_
     if strategy not in ("word", "sentence"):
         raise HTTPException(400, "Strategia sconosciuta")
 
-    paths = []
+    if len(files) > MAX_UPLOAD_FILES:
+        raise HTTPException(400, f"Al massimo {MAX_UPLOAD_FILES} file per volta")
+
     UPLOAD_DIR.mkdir(exist_ok=True)
-
-    for upload in files:
-        name = Path(upload.filename or "").name
-
-        if Path(name).suffix not in (".md", ".pdf"):
-            raise HTTPException(400, f"{name or "file senza nome"}: sono ammessi solo .md e .pdf")
-
-        target = UPLOAD_DIR / name
-
-        with open(target, "wb") as out:
-            shutil.copyfileobj(upload.file, out)
-
-        paths.append(target)
+    paths = [saveUpload(upload) for upload in files]
 
     if not paths:
         raise HTTPException(400, "Nessun file da indicizzare")

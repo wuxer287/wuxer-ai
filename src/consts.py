@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -64,3 +65,10 @@ ANSWERS_DIR = Path("log_data_answer")
 QUESTIONS_PATH = "eval/questions.json"
 UPLOAD_DIR = Path("uploads")
 WEB_DIR = Path(__file__).parent.parent / "web"
+
+MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "20"))
+MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
+MAX_UPLOAD_FILES = 20
+MAX_PDF_PAGES = 500
+
+SAFE_NAME = re.compile(r"(?![. ])[\w .()\-]{1,100}\.(md|pdf)")
