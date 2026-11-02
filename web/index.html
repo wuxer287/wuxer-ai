@@ -8,14 +8,11 @@
 </head>
 <body>
     <header class="topbar">
-        <div class="topbar-inner">
-            <span class="title">Wuxer AI</span>
-            <nav class="tabs">
-                <button class="tab on" data-tab="ask">Chiedi</button>
-                <button class="tab" data-tab="index">Indicizza</button>
-                <button class="tab" data-tab="eval">Valuta</button>
-            </nav>
-        </div>
+        <nav class="tabs">
+            <button class="tab on" data-tab="ask">Chiedi</button>
+            <button class="tab" data-tab="index">Indicizza</button>
+            <button class="tab" data-tab="eval">Valuta</button>
+        </nav>
     </header>
 
     <div id="banner" class="banner" hidden></div>
@@ -23,102 +20,116 @@
     <main>
         <section id="ask" class="page on">
             <div class="card">
-                <textarea id="q-text" rows="4" placeholder="Fai una domanda sulle tue note"></textarea>
+                <textarea id="q-text" rows="3" placeholder="Fai una domanda sulle tue note"></textarea>
 
-                <details class="options">
-                    <summary>Opzioni</summary>
-                    <div class="grid">
-                        <label class="field"><span>Categoria</span><select id="q-category"></select></label>
-                        <label class="field"><span>Modalità</span><select id="q-mode"></select></label>
-                        <label class="field"><span>Chunk (top-k)</span><input id="q-topk" type="number" min="1" max="50"></label>
-                        <label class="switch"><input type="checkbox" id="q-rerank"><span class="slider"></span>Re-ranking</label>
-                    </div>
-                </details>
-
-                <div class="actions">
-                    <span class="muted">Ctrl + Invio per inviare</span>
+                <div class="toolbar">
+                    <label class="field"><span>Categoria</span><select id="q-category"></select></label>
+                    <label class="field"><span>Modalità</span><select id="q-mode"></select></label>
+                    <label class="field narrow"><span>Chunk (top-k)</span><input id="q-topk" type="number" min="1" max="50"></label>
+                    <label class="switch"><input type="checkbox" id="q-rerank"><span class="slider"></span>Re-ranking</label>
                     <button id="q-go" class="btn primary needs-models">Chiedi</button>
                 </div>
             </div>
 
-            <div id="q-result" hidden>
+            <div id="q-result" class="result" hidden>
                 <div class="card">
+                    <div id="q-info" class="meta"></div>
                     <div id="q-answer" class="answer"></div>
                     <div id="q-sources" class="chips"></div>
-                    <div id="q-info" class="muted"></div>
                 </div>
 
-                <h2 class="section-title">Chunk recuperati</h2>
-                <div id="q-chunks" class="stack"></div>
+                <aside id="q-chunks-card" class="card side" hidden>
+                    <h2>Chunk recuperati <span id="q-count" class="count"></span></h2>
+                    <div id="q-chunks" class="stack"></div>
+                </aside>
             </div>
         </section>
 
         <section id="index" class="page">
-            <div class="card">
-                <h2>Indicizza documenti</h2>
+            <div class="two">
+                <div class="card">
+                    <h2>Indicizza documenti</h2>
 
-                <div class="grid">
-                    <label class="field"><span>Categoria</span><select id="i-category"></select></label>
-                    <label class="field"><span>Strategia</span><select id="i-strategy"></select></label>
-                    <label class="field"><span>Dimensione</span><input id="i-dimension" type="number" min="1"></label>
-                    <label class="field"><span>Overlap</span><input id="i-overlap" type="number" min="0"></label>
+                    <div class="grid">
+                        <label class="field"><span>Categoria</span><select id="i-category"></select></label>
+                        <label class="field"><span>Strategia</span><select id="i-strategy"></select></label>
+                        <label class="field"><span>Dimensione</span><input id="i-dimension" type="number" min="1"></label>
+                        <label class="field"><span>Overlap</span><input id="i-overlap" type="number" min="0"></label>
+                    </div>
+
+                    <label id="i-drop" class="drop">
+                        <input id="i-files" type="file" multiple accept=".md,.pdf" hidden>
+                        <strong>Trascina qui i file</strong>
+                        <span class="muted">.md o .pdf, oppure clicca per sceglierli</span>
+                    </label>
+
+                    <div id="i-selected" class="selected" hidden>
+                        <div class="selected-head">
+                            <strong id="i-count"></strong>
+                            <button id="i-clear" class="link" type="button">Rimuovi tutti</button>
+                        </div>
+                        <ul id="i-list" class="filelist"></ul>
+                    </div>
+
+                    <div id="i-progress" class="progress" hidden><div id="i-bar" class="bar"></div></div>
+
+                    <div class="actions">
+                        <span id="i-status" class="muted"></span>
+                        <button id="i-go" class="btn primary needs-models">Indicizza</button>
+                    </div>
                 </div>
 
-                <label id="i-drop" class="drop">
-                    <input id="i-files" type="file" multiple accept=".md,.pdf" hidden>
-                    <strong>Trascina qui i file</strong>
-                    <span class="muted">.md o .pdf, oppure clicca per sceglierli</span>
-                </label>
-                <ul id="i-list" class="filelist"></ul>
-
-                <label class="field"><span>Oppure cartella sul server</span><input id="i-folder" type="text" placeholder="es. /content/drive/MyDrive/note"></label>
-
-                <div id="i-progress" class="progress" hidden><div id="i-bar" class="bar"></div></div>
-
-                <div class="actions">
-                    <span id="i-status" class="muted"></span>
-                    <button id="i-go" class="btn primary needs-models">Indicizza</button>
-                </div>
-            </div>
-
-            <div class="card">
-                <h2>Contenuto del database</h2>
-                <div id="i-sources"></div>
+                <aside class="card side">
+                    <h2>Documenti indicizzati <span id="i-total" class="count"></span></h2>
+                    <div id="i-sources"></div>
+                </aside>
             </div>
         </section>
 
         <section id="eval" class="page">
-            <div class="card">
-                <h2>Prova una domanda</h2>
-                <p class="muted">Vedi coseno e re-ranking affiancati sulla stessa domanda. Se ti convince, salvala in <code>eval/questions.json</code>.</p>
-                <textarea id="p-text" rows="3" placeholder="Nuova domanda"></textarea>
-
-                <div class="actions">
-                    <select id="p-category"></select>
-                    <button id="p-go" class="btn primary needs-models">Prova</button>
-                </div>
-
-                <div id="p-out" class="cols"></div>
-
-                <div id="p-save" class="save" hidden>
-                    <label class="field"><span>Etichetta</span><select id="p-label"></select></label>
-                    <label class="field grow"><span>Fonte attesa (separate da virgola, facoltativa)</span><input id="p-source" type="text" placeholder="il-caffe.md"></label>
-                    <button id="p-add" class="btn">Salva domanda</button>
-                </div>
-
-                <div id="p-status" class="muted"></div>
+            <div class="segmented">
+                <button class="subtab on" data-sub="probe">Prova una domanda</button>
+                <button class="subtab" data-sub="full">Valutazione completa</button>
             </div>
 
-            <div class="card">
-                <h2>Valutazione completa</h2>
-                <div class="actions">
-                    <label class="switch"><input type="checkbox" id="e-rerank" checked><span class="slider"></span>Anche con re-ranking</label>
-                    <button id="e-go" class="btn primary needs-models">Esegui eval</button>
+            <div id="probe" class="subpage on">
+                <div class="card">
+                    <p class="muted intro">Confronta coseno e re-ranking sulla stessa domanda. Se il risultato ti convince, salvala in <code>eval/questions.json</code>.</p>
+                    <textarea id="p-text" rows="3" placeholder="Nuova domanda"></textarea>
+
+                    <div class="toolbar">
+                        <label class="field"><span>Categoria</span><select id="p-category"></select></label>
+                        <button id="p-go" class="btn primary needs-models">Prova</button>
+                    </div>
                 </div>
-                <div id="e-status" class="muted"></div>
+
+                <div id="p-result" hidden>
+                    <p class="legend"><span class="dot pass"></span>sopra soglia <span class="dot cut"></span>tagliato</p>
+                    <div id="p-out" class="cols"></div>
+
+                    <div id="p-save" class="card save" hidden>
+                        <label class="field"><span>Etichetta</span><select id="p-label"></select></label>
+                        <label class="field grow"><span>Fonte attesa (separate da virgola, facoltativa)</span><input id="p-source" type="text" placeholder="il-caffe.md"></label>
+                        <button id="p-add" class="btn">Salva domanda</button>
+                    </div>
+                </div>
+
+                <div id="p-status" class="muted status"></div>
             </div>
 
-            <div id="e-out"></div>
+            <div id="full" class="subpage">
+                <div class="card">
+                    <p class="muted intro">Esegue tutte le domande di <code>eval/questions.json</code> su ogni categoria indicizzata e suggerisce le soglie.</p>
+
+                    <div class="toolbar">
+                        <label class="switch"><input type="checkbox" id="e-rerank" checked><span class="slider"></span>Anche con re-ranking</label>
+                        <button id="e-go" class="btn primary needs-models">Esegui valutazione</button>
+                    </div>
+                    <div id="e-status" class="muted status"></div>
+                </div>
+
+                <div id="e-out"></div>
+            </div>
         </section>
     </main>
 

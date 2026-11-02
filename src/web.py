@@ -14,7 +14,6 @@ from evaluation import loadQuestions
 from service import (
     Engine,
     EmptyCategoryError,
-    listIndexableFiles,
     indexFiles,
     answerQuestion,
     listSources,
@@ -208,7 +207,7 @@ def sources():
     return listSources(engine)
 
 @app.post("/api/index")
-def index(category: str = Form(DEFAULT_CATEGORY), dimension: int = Form(DEFAULT_DIMENSION), overlap: int = Form(DEFAULT_OVERLAP), strategy: str = Form(DEFAULT_STRATEGY), folder: str = Form(""), files: list[UploadFile] = File(default=[])):
+def index(category: str = Form(DEFAULT_CATEGORY), dimension: int = Form(DEFAULT_DIMENSION), overlap: int = Form(DEFAULT_OVERLAP), strategy: str = Form(DEFAULT_STRATEGY), files: list[UploadFile] = File(default=[])):
     checkReady()
     checkCategory(category)
 
@@ -216,29 +215,20 @@ def index(category: str = Form(DEFAULT_CATEGORY), dimension: int = Form(DEFAULT_
         raise HTTPException(400, "Strategia sconosciuta")
 
     paths = []
+    UPLOAD_DIR.mkdir(exist_ok=True)
 
-    if folder.strip():
-        folder_path = Path(folder.strip())
+    for upload in files:
+        name = Path(upload.filename or "").name
 
-        if not folder_path.is_dir():
-            raise HTTPException(400, "La cartella non esiste")
+        if Path(name).suffix not in (".md", ".pdf"):
+            raise HTTPException(400, f"{name or "file senza nome"}: sono ammessi solo .md e .pdf")
 
-        paths = listIndexableFiles(folder_path)
-    else:
-        UPLOAD_DIR.mkdir(exist_ok=True)
+        target = UPLOAD_DIR / name
 
-        for upload in files:
-            name = Path(upload.filename or "").name
+        with open(target, "wb") as out:
+            shutil.copyfileobj(upload.file, out)
 
-            if Path(name).suffix not in (".md", ".pdf"):
-                raise HTTPException(400, f"{name or "file senza nome"}: sono ammessi solo .md e .pdf")
-
-            target = UPLOAD_DIR / name
-
-            with open(target, "wb") as out:
-                shutil.copyfileobj(upload.file, out)
-
-            paths.append(target)
+        paths.append(target)
 
     if not paths:
         raise HTTPException(400, "Nessun file da indicizzare")

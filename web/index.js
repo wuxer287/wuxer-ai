@@ -96,9 +96,219 @@ function chunkCard(chunk, state) {
     const card = el("div", undefined, "chunk" + (state ? " " + state : ""));
     const head = el("div", undefined, "chunk-head");
     head.append(el("span", chunk.source), el("span", chunk.score.toFixed(3), "score"));
-    card.append(head, el("div", chunk.text, "chunk-text"));
+    const text = el("div", chunk.text, "chunk-text");
+    text.title = "Clicca per espandere";
+    text.onclick = () => text.classList.toggle("open");
+    card.append(head, text);
 
     return card;
+}
+
+function formatSize(bytes) {
+    if (bytes < 1024) return bytes + " B";
+
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB";
+
+    return (bytes / 1024 / 1024).toFixed(1) + " MB";
+}
+
+const INLINE = /`([^`]+)`|\*\*(.+?)\*\*|\*(?=[^\s*])(.+?)\*|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/;
+const LIST_ITEM = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/;
+const TABLE_SEPARATOR = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/;
+
+function renderInline(parent, text) {
+    while (text) {
+        const match = INLINE.exec(text);
+
+        if (!match) {
+            parent.append(text);
+
+            return;
+        }
+
+        if (match.index > 0) parent.append(text.slice(0, match.index));
+
+        let node;
+
+        if (match[1] !== undefined) {
+            node = el("code", match[1]);
+        }
+        else if (match[2] !== undefined) {
+            node = el("strong");
+            renderInline(node, match[2]);
+        }
+        else if (match[3] !== undefined) {
+            node = el("em");
+            renderInline(node, match[3]);
+        }
+        else {
+            node = el("a");
+            node.href = match[5];
+            node.target = "_blank";
+            node.rel = "noopener noreferrer";
+            renderInline(node, match[4]);
+        }
+
+        parent.append(node);
+        text = text.slice(match.index + match[0].length);
+    }
+}
+
+function splitRow(line) {
+    return line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map(cell => cell.trim());
+}
+
+function renderList(root, items) {
+    const stack = [];
+
+    for (const item of items) {
+        const ordered = /\d/.test(item.marker);
+
+        while (stack.length && item.indent < stack[stack.length - 1].indent) stack.pop();
+
+        let top = stack[stack.length - 1];
+
+        if (!top || item.indent > top.indent) {
+            const list = el(ordered ? "ol" : "ul");
+
+            if (top) top.last.append(list);
+            else root.append(list);
+
+            top = { indent: item.indent, list, last: null };
+            stack.push(top);
+        }
+
+        const li = el("li");
+        renderInline(li, item.text);
+        top.list.append(li);
+        top.last = li;
+    }
+}
+
+function renderMarkdown(root, source) {
+    const lines = source.replace(/\r\n?/g, "\n").split("\n");
+    let paragraph = [];
+    let i = 0;
+
+    function flush() {
+        if (paragraph.length === 0) return;
+
+        const p = el("p");
+
+        paragraph.forEach((line, index) => {
+            if (index > 0) p.append(el("br"));
+
+            renderInline(p, line.trim());
+        });
+        root.append(p);
+        paragraph = [];
+    }
+
+    root.replaceChildren();
+
+    while (i < lines.length) {
+        const line = lines[i];
+        let match;
+
+        if (/^\s*```/.test(line)) {
+            flush();
+            const code = [];
+            i++;
+
+            while (i < lines.length && !/^\s*```/.test(lines[i])) code.push(lines[i++]);
+
+            i++;
+            const pre = el("pre");
+            pre.append(el("code", code.join("\n")));
+            root.append(pre);
+        }
+        else if (line.trim() === "") {
+            flush();
+            i++;
+        }
+        else if ((match = /^(#{1,6})\s+(.*)$/.exec(line))) {
+            flush();
+            const heading = el("h" + Math.min(match[1].length + 2, 6));
+            renderInline(heading, match[2].replace(/\s+#+\s*$/, ""));
+            root.append(heading);
+            i++;
+        }
+        else if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(line)) {
+            flush();
+            root.append(el("hr"));
+            i++;
+        }
+        else if (/^\s*>/.test(line)) {
+            flush();
+            const quote = [];
+
+            while (i < lines.length && /^\s*>/.test(lines[i])) quote.push(lines[i++].replace(/^\s*>\s?/, ""));
+
+            const block = el("blockquote");
+            renderMarkdown(block, quote.join("\n"));
+            root.append(block);
+        }
+        else if (LIST_ITEM.test(line)) {
+            flush();
+            const items = [];
+
+            while (i < lines.length) {
+                const item = LIST_ITEM.exec(lines[i]);
+
+                if (item) {
+                    items.push({ indent: item[1].length, marker: item[2], text: item[3] });
+                }
+                else if (lines[i].trim() === "" && i + 1 < lines.length && LIST_ITEM.test(lines[i + 1])) {
+                    // riga vuota tra due voci: la lista continua
+                }
+                else if (/^\s+\S/.test(lines[i]) && items.length) {
+                    items[items.length - 1].text += " " + lines[i].trim();
+                }
+                else {
+                    break;
+                }
+
+                i++;
+            }
+
+            renderList(root, items);
+        }
+        else if (line.includes("|") && i + 1 < lines.length && TABLE_SEPARATOR.test(lines[i + 1])) {
+            flush();
+            const rows = [];
+            const header = splitRow(line);
+            i += 2;
+
+            while (i < lines.length && lines[i].includes("|") && lines[i].trim() !== "") rows.push(splitRow(lines[i++]));
+
+            const wrap = el("div", undefined, "table-wrap");
+            const table = el("table");
+            const head = table.createTHead().insertRow();
+
+            for (const cell of header) {
+                const th = el("th");
+                renderInline(th, cell);
+                head.append(th);
+            }
+
+            const body = table.createTBody();
+
+            for (const cells of rows) {
+                const tr = body.insertRow();
+
+                for (const cell of cells) renderInline(tr.insertCell(), cell);
+            }
+
+            wrap.append(table);
+            root.append(wrap);
+        }
+        else {
+            paragraph.push(line);
+            i++;
+        }
+    }
+
+    flush();
 }
 
 // --- schede ---
@@ -109,6 +319,14 @@ for (const tab of document.querySelectorAll(".tab")) {
         $(tab.dataset.tab).classList.add("on");
 
         if (tab.dataset.tab === "index") loadSources();
+    };
+}
+
+for (const tab of document.querySelectorAll(".subtab")) {
+    tab.onclick = () => {
+        document.querySelectorAll(".subtab, .subpage").forEach(n => n.classList.remove("on"));
+        tab.classList.add("on");
+        $(tab.dataset.sub).classList.add("on");
     };
 }
 
@@ -170,14 +388,21 @@ async function init() {
 }
 
 // --- Chiedi ---
+function metaItem(label, value) {
+    const item = el("span", undefined, "meta-item");
+    item.append(el("span", label), el("strong", value));
+
+    return item;
+}
+
 async function ask() {
     $("q-go").disabled = true;
     $("q-result").hidden = false;
-    $("q-answer").textContent = "Sto cercando nelle note…";
-    $("q-answer").classList.remove("err");
+    $("q-chunks-card").hidden = true;
+    $("q-info").replaceChildren();
     $("q-sources").replaceChildren();
-    $("q-info").textContent = "";
     $("q-chunks").replaceChildren();
+    $("q-answer").replaceChildren(el("span", "Sto cercando nelle note…", "muted"));
 
     try {
         const data = await api("/api/query", {
@@ -187,23 +412,24 @@ async function ask() {
             top_k: Number($("q-topk").value),
             rerank: $("q-rerank").checked
         });
-        $("q-answer").textContent = data.answer;
+        renderMarkdown($("q-answer"), data.answer);
 
         for (const source of data.sources) $("q-sources").append(el("span", source, "chip"));
 
-        const parts = [];
+        if (data.usage) {
+            const input = data.usage.cached ? `${data.usage.input} (${data.usage.cached} in cache)` : String(data.usage.input);
+            $("q-info").append(metaItem("input token", input), metaItem("output token", String(data.usage.output)), metaItem("total token", String(data.usage.total)));
+        }
 
-        if (data.usage) parts.push(`${data.usage.input} token in ingresso (${data.usage.cached} in cache), ${data.usage.output} in uscita, ${data.usage.total} totali`);
-
-        if (data.elapsed) parts.push(data.elapsed.toFixed(1) + " s");
-
-        $("q-info").textContent = parts.join(" · ");
+        if (data.elapsed) $("q-info").append(metaItem("tempo", data.elapsed.toFixed(1) + " s"));
 
         for (const chunk of data.chunks) $("q-chunks").append(chunkCard(chunk));
+
+        $("q-count").textContent = data.chunks.length || "";
+        $("q-chunks-card").hidden = data.chunks.length === 0;
     }
     catch (e) {
-        $("q-answer").textContent = e.message;
-        $("q-answer").classList.add("err");
+        $("q-answer").replaceChildren(el("span", e.message, "err"));
     }
 
     $("q-go").disabled = false;
@@ -217,24 +443,92 @@ $("q-text").onkeydown = e => {
 // --- Indicizza ---
 async function loadSources() {
     const rows = await api("/api/sources");
+    const groups = new Map();
     $("i-sources").replaceChildren();
 
     if (rows.length === 0) {
-        $("i-sources").append(el("p", "Il database è vuoto.", "muted"));
+        $("i-total").textContent = "";
+        $("i-sources").append(el("p", "Nessun documento indicizzato.", "muted"));
 
         return;
     }
 
-    $("i-sources").append(makeTable(["Categoria", "File", "Chunk"], rows.map(r => [r.category, r.source, r.chunks])));
+    for (const row of rows) {
+        if (!groups.has(row.category)) groups.set(row.category, []);
+
+        groups.get(row.category).push(row);
+    }
+
+    $("i-total").textContent = rows.length;
+
+    for (const [category, docs] of groups) {
+        const group = el("div", undefined, "group");
+        const chunks = docs.reduce((sum, doc) => sum + doc.chunks, 0);
+        const head = el("div", undefined, "group-head");
+        head.append(el("span", category), el("span", `${docs.length} file · ${chunks} chunk`));
+        group.append(head);
+
+        for (const doc of docs) {
+            const item = el("div", undefined, "doc");
+            item.append(el("span", doc.source), el("span", `${doc.chunks} chunk`));
+            group.append(item);
+        }
+
+        $("i-sources").append(group);
+    }
 }
+
+let selected = [];
 
 function showSelectedFiles() {
+    const count = selected.length;
     $("i-list").replaceChildren();
+    $("i-selected").hidden = count === 0;
+    $("i-count").textContent = count === 1 ? "1 file selezionato" : `${count} file selezionati`;
+    $("i-go").textContent = count ? `Indicizza ${count} file` : "Indicizza";
 
-    for (const file of $("i-files").files) $("i-list").append(el("li", file.name));
+    selected.forEach((file, index) => {
+        const item = el("li");
+        const remove = el("button", "×", "remove");
+        remove.type = "button";
+        remove.title = "Rimuovi " + file.name;
+        remove.onclick = () => {
+            selected.splice(index, 1);
+            showSelectedFiles();
+        };
+        item.append(el("span", file.name.split(".").pop().toUpperCase(), "ext"), el("span", file.name, "file-name"), el("span", formatSize(file.size), "file-size"), remove);
+        $("i-list").append(item);
+    });
 }
 
-$("i-files").onchange = showSelectedFiles;
+function addFiles(files) {
+    const rejected = [];
+
+    for (const file of files) {
+        if (!/\.(md|pdf)$/.test(file.name)) {
+            rejected.push(file.name);
+
+            continue;
+        }
+
+        const index = selected.findIndex(f => f.name === file.name);
+
+        if (index >= 0) selected[index] = file;
+        else selected.push(file);
+    }
+
+    showSelectedFiles();
+    setStatus($("i-status"), rejected.length ? "Ignorati (sono ammessi solo .md e .pdf): " + rejected.join(", ") : "", rejected.length > 0);
+}
+
+$("i-files").onchange = () => {
+    addFiles($("i-files").files);
+    $("i-files").value = "";
+};
+$("i-clear").onclick = () => {
+    selected = [];
+    showSelectedFiles();
+};
 
 for (const type of ["dragenter", "dragover"]) {
     $("i-drop").addEventListener(type, e => {
@@ -250,10 +544,7 @@ for (const type of ["dragleave", "drop"]) {
     });
 }
 
-$("i-drop").addEventListener("drop", e => {
-    $("i-files").files = e.dataTransfer.files;
-    showSelectedFiles();
-});
+$("i-drop").addEventListener("drop", e => addFiles(e.dataTransfer.files));
 
 function showProgress(text) {
     const match = text.match(/\[(\d+)\/(\d+)\]/);
@@ -272,9 +563,8 @@ $("i-go").onclick = async () => {
     form.append("strategy", $("i-strategy").value);
     form.append("dimension", $("i-dimension").value);
     form.append("overlap", $("i-overlap").value);
-    form.append("folder", $("i-folder").value);
 
-    for (const file of $("i-files").files) form.append("files", file);
+    for (const file of selected) form.append("files", file);
 
     $("i-go").disabled = true;
     $("i-progress").hidden = true;
@@ -286,6 +576,8 @@ $("i-go").onclick = async () => {
         const result = await pollJob(job, showProgress);
         $("i-bar").style.width = "100%";
         setStatus($("i-status"), `Fatto: ${result.indexed} file indicizzati`);
+        selected = [];
+        showSelectedFiles();
         loadSources();
     }
     catch (e) {
@@ -298,7 +590,8 @@ $("i-go").onclick = async () => {
 // --- Valuta: prova una domanda ---
 function probeColumn(title, chunks, threshold) {
     const col = el("div");
-    col.append(el("h3", `${title} (soglia ${threshold})`));
+    const passed = chunks.filter(chunk => chunk.score >= threshold).length;
+    col.append(el("h3", `${title} · soglia ${threshold} · ${passed}/${chunks.length} sopra`));
     const list = el("div", undefined, "stack");
 
     for (const chunk of chunks) list.append(chunkCard(chunk, chunk.score >= threshold ? "pass" : "cut"));
@@ -311,12 +604,14 @@ function probeColumn(title, chunks, threshold) {
 $("p-go").onclick = async () => {
     $("p-go").disabled = true;
     $("p-out").replaceChildren();
+    $("p-result").hidden = true;
     $("p-save").hidden = true;
     setStatus($("p-status"), "Calcolo…");
 
     try {
         const data = await api("/api/probe", { question: $("p-text").value, category: $("p-category").value });
         $("p-out").append(probeColumn("Coseno", data.cosine, data.min_sim), probeColumn("Re-ranking", data.rerank, data.rerank_min));
+        $("p-result").hidden = false;
         $("p-save").hidden = false;
         setStatus($("p-status"), "");
     }
