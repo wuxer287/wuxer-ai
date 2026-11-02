@@ -92,6 +92,46 @@ function badge(text, kind) {
     return el("span", text, "badge " + kind);
 }
 
+// --- barra di progresso: indeterminata finché non arriva un passo "[n/m] nome" ---
+function makeLoading(id) {
+    const head = el("div", undefined, "loading-head");
+    const track = el("div", undefined, "progress indeterminate");
+    head.hidden = true;
+    head.append(el("span", undefined, "loading-label"), el("span", undefined, "loading-step"));
+    track.append(el("div", undefined, "bar"));
+    $(id).append(head, track);
+}
+
+function showLoading(id) {
+    $(id).hidden = false;
+    updateLoading(id, "");
+}
+
+function updateLoading(id, text) {
+    const box = $(id);
+    const match = /^\[(\d+)\/(\d+)\]\s*(.*)$/.exec(text);
+    const head = box.querySelector(".loading-head");
+    const track = box.querySelector(".progress");
+    const bar = box.querySelector(".bar");
+
+    head.hidden = !match;
+    track.classList.toggle("indeterminate", !match);
+
+    if (!match) {
+        bar.style.width = "";
+
+        return;
+    }
+
+    box.querySelector(".loading-label").textContent = match[3];
+    box.querySelector(".loading-step").textContent = `${match[1]} di ${match[2]}`;
+    bar.style.width = Math.max(5, 100 * (Number(match[1]) - 1) / Number(match[2])) + "%";
+}
+
+function hideLoading(id) {
+    $(id).hidden = true;
+}
+
 function chunkCard(chunk, state) {
     const card = el("div", undefined, "chunk" + (state ? " " + state : ""));
     const head = el("div", undefined, "chunk-head");
@@ -371,6 +411,8 @@ async function waitForModels() {
 }
 
 async function init() {
+    for (const id of ["q-progress", "i-progress", "p-progress", "e-progress"]) makeLoading(id);
+
     const cfg = await api("/api/config");
     const categories = Object.keys(cfg.categories);
     const d = cfg.defaults;
@@ -388,21 +430,42 @@ async function init() {
 }
 
 // --- Chiedi ---
-function metaItem(label, value) {
-    const item = el("span", undefined, "meta-item");
-    item.append(el("span", label), el("strong", value));
+function renderStats(data) {
+    const rows = [];
 
-    return item;
+    if (data.usage) {
+        rows.push(["Input token", data.usage.input]);
+
+        if (data.usage.cached) rows.push(["di cui in cache", data.usage.cached]);
+
+        rows.push(["Output token", data.usage.output], ["Total token", data.usage.total]);
+    }
+
+    if (data.elapsed) rows.push(["Tempo", data.elapsed.toFixed(1) + " s"]);
+
+    const table = el("table");
+    const body = table.createTBody();
+
+    for (const [label, value] of rows) {
+        const tr = body.insertRow();
+        tr.insertCell().textContent = label;
+        tr.insertCell().textContent = value;
+    }
+
+    $("q-stats-body").replaceChildren(table);
+    $("q-stats").hidden = rows.length === 0;
 }
 
 async function ask() {
     $("q-go").disabled = true;
-    $("q-result").hidden = false;
+    $("q-result").hidden = true;
+    $("q-stats").hidden = true;
+    $("q-stats").open = false;
     $("q-chunks-card").hidden = true;
-    $("q-info").replaceChildren();
+    $("q-chunks-card").open = false;
     $("q-sources").replaceChildren();
     $("q-chunks").replaceChildren();
-    $("q-answer").replaceChildren(el("span", "Sto cercando nelle note…", "muted"));
+    showLoading("q-progress");
 
     try {
         const data = await api("/api/query", {
@@ -413,15 +476,9 @@ async function ask() {
             rerank: $("q-rerank").checked
         });
         renderMarkdown($("q-answer"), data.answer);
+        renderStats(data);
 
         for (const source of data.sources) $("q-sources").append(el("span", source, "chip"));
-
-        if (data.usage) {
-            const input = data.usage.cached ? `${data.usage.input} (${data.usage.cached} in cache)` : String(data.usage.input);
-            $("q-info").append(metaItem("input token", input), metaItem("output token", String(data.usage.output)), metaItem("total token", String(data.usage.total)));
-        }
-
-        if (data.elapsed) $("q-info").append(metaItem("tempo", data.elapsed.toFixed(1) + " s"));
 
         for (const chunk of data.chunks) $("q-chunks").append(chunkCard(chunk));
 
@@ -432,6 +489,8 @@ async function ask() {
         $("q-answer").replaceChildren(el("span", e.message, "err"));
     }
 
+    hideLoading("q-progress");
+    $("q-result").hidden = false;
     $("q-go").disabled = false;
 }
 
@@ -439,6 +498,13 @@ $("q-go").onclick = ask;
 $("q-text").onkeydown = e => {
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !$("q-go").disabled) ask();
 };
+
+document.addEventListener("click", e => {
+    if (!$("q-stats").contains(e.target)) $("q-stats").open = false;
+});
+document.addEventListener("keydown", e => {
+    if (e.key === "Escape") $("q-stats").open = false;
+});
 
 // --- Indicizza ---
 async function loadSources() {
@@ -546,17 +612,6 @@ for (const type of ["dragleave", "drop"]) {
 
 $("i-drop").addEventListener("drop", e => addFiles(e.dataTransfer.files));
 
-function showProgress(text) {
-    const match = text.match(/\[(\d+)\/(\d+)\]/);
-
-    $("i-status").textContent = text;
-
-    if (match) {
-        $("i-progress").hidden = false;
-        $("i-bar").style.width = (100 * Number(match[1]) / Number(match[2])) + "%";
-    }
-}
-
 $("i-go").onclick = async () => {
     const form = new FormData();
     form.append("category", $("i-category").value);
@@ -567,14 +622,12 @@ $("i-go").onclick = async () => {
     for (const file of selected) form.append("files", file);
 
     $("i-go").disabled = true;
-    $("i-progress").hidden = true;
-    $("i-bar").style.width = "0";
-    setStatus($("i-status"), "Invio dei file…");
+    setStatus($("i-status"), "");
+    showLoading("i-progress");
 
     try {
         const { job } = await api("/api/index", undefined, form);
-        const result = await pollJob(job, showProgress);
-        $("i-bar").style.width = "100%";
+        const result = await pollJob(job, text => updateLoading("i-progress", text));
         setStatus($("i-status"), `Fatto: ${result.indexed} file indicizzati`);
         selected = [];
         showSelectedFiles();
@@ -584,6 +637,7 @@ $("i-go").onclick = async () => {
         setStatus($("i-status"), e.message, true);
     }
 
+    hideLoading("i-progress");
     $("i-go").disabled = false;
 };
 
@@ -606,7 +660,8 @@ $("p-go").onclick = async () => {
     $("p-out").replaceChildren();
     $("p-result").hidden = true;
     $("p-save").hidden = true;
-    setStatus($("p-status"), "Calcolo…");
+    setStatus($("p-status"), "");
+    showLoading("p-progress");
 
     try {
         const data = await api("/api/probe", { question: $("p-text").value, category: $("p-category").value });
@@ -619,6 +674,7 @@ $("p-go").onclick = async () => {
         setStatus($("p-status"), e.message, true);
     }
 
+    hideLoading("p-progress");
     $("p-go").disabled = false;
 };
 
@@ -699,36 +755,84 @@ function renderReport(title, rep) {
     return box;
 }
 
+let evalReports = {};
+let evalView = { category: null, method: "cosine" };
+
+function renderEval() {
+    const categories = Object.entries(evalReports);
+    const report = evalReports[evalView.category];
+    $("e-categories").replaceChildren();
+    $("e-methods").replaceChildren();
+    $("e-out").replaceChildren();
+
+    for (const [category, rep] of categories) {
+        const button = el("button", category, "pill" + (category === evalView.category ? " on" : ""));
+        button.type = "button";
+
+        if (rep.skipped) {
+            button.disabled = true;
+            button.title = "Nessun chunk indicizzato";
+            button.append(el("small", "vuota"));
+        }
+        else {
+            button.append(el("small", `${rep.cosine.results.length} ${rep.cosine.results.length === 1 ? "domanda" : "domande"}`));
+            button.onclick = () => {
+                evalView.category = category;
+
+                if (!evalReports[category][evalView.method]) evalView.method = "cosine";
+
+                renderEval();
+            };
+        }
+
+        $("e-categories").append(button);
+    }
+
+    if (!report || report.skipped) {
+        $("e-out").append(el("p", "Nessuna categoria con contenuti indicizzati da valutare.", "muted"));
+
+        return;
+    }
+
+    for (const [method, label] of [["cosine", "Coseno"], ["rerank", "Re-ranking"]]) {
+        const button = el("button", label, "pill" + (method === evalView.method ? " on" : ""));
+        button.type = "button";
+
+        if (report[method]) {
+            button.onclick = () => {
+                evalView.method = method;
+                renderEval();
+            };
+        }
+        else {
+            button.disabled = true;
+            button.title = "Esegui la valutazione con il re-ranking";
+        }
+
+        $("e-methods").append(button);
+    }
+
+    $("e-out").append(renderReport(evalView.method === "cosine" ? "Coseno" : "Re-ranking", report[evalView.method]));
+}
+
 $("e-go").onclick = async () => {
     $("e-go").disabled = true;
-    $("e-out").replaceChildren();
-    setStatus($("e-status"), "In corso…");
+    $("e-results").hidden = true;
+    setStatus($("e-status"), "");
+    showLoading("e-progress");
 
     try {
         const { job } = await api("/api/eval", { rerank: $("e-rerank").checked });
-        const reports = await pollJob(job, p => setStatus($("e-status"), p));
-        setStatus($("e-status"), "");
-
-        for (const [category, rep] of Object.entries(reports)) {
-            const card = el("div", undefined, "card");
-            card.append(el("h2", "Categoria: " + category));
-
-            if (rep.skipped) {
-                card.append(el("p", "Nessun chunk indicizzato: categoria saltata.", "muted"));
-            }
-            else {
-                card.append(renderReport("Coseno", rep.cosine));
-
-                if (rep.rerank) card.append(renderReport("Re-ranking", rep.rerank));
-            }
-
-            $("e-out").append(card);
-        }
+        evalReports = await pollJob(job, text => updateLoading("e-progress", text));
+        evalView = { category: Object.keys(evalReports).find(category => !evalReports[category].skipped) || null, method: "cosine" };
+        $("e-results").hidden = false;
+        renderEval();
     }
     catch (e) {
         setStatus($("e-status"), e.message, true);
     }
 
+    hideLoading("e-progress");
     $("e-go").disabled = false;
 };
 

@@ -174,8 +174,12 @@ def readQuestionsFile(path: str) -> list[dict]:
     with open(path, encoding="utf-8") as f:
         return json.load(f)
 
-def evaluate(engine: Engine, questions: list[dict], top_k: int = DEFAULT_TOP_K, use_rerank: bool = False, pool: int = DEFAULT_POOL, rerank_min: float | None = None) -> dict:
+def evaluate(engine: Engine, questions: list[dict], top_k: int = DEFAULT_TOP_K, use_rerank: bool = False, pool: int = DEFAULT_POOL, rerank_min: float | None = None, on_progress = None) -> dict:
     reports = {}
+    groups = groupByCategory(questions)
+    steps = 2 if use_rerank else 1
+    total = len(groups) * steps
+    number = 0
     conn = createConnection(engine.db_path, vector=True)
 
     try:
@@ -187,8 +191,14 @@ def evaluate(engine: Engine, questions: list[dict], top_k: int = DEFAULT_TOP_K, 
 
             if countChunksByCategory(conn, category) == 0:
                 reports[category] = {"skipped": True}
+                number += steps
 
                 continue
+
+            number += 1
+
+            if on_progress:
+                on_progress(number, total, f"{category}: coseno")
 
             results = scoreQuestions(conn, model, hf_model_name, category, group, top_k)
             threshold = config["min_sim"]
@@ -202,6 +212,11 @@ def evaluate(engine: Engine, questions: list[dict], top_k: int = DEFAULT_TOP_K, 
             }
 
             if use_rerank:
+                number += 1
+
+                if on_progress:
+                    on_progress(number, total, f"{category}: re-ranking")
+
                 rr_results = scoreQuestions(conn, model, hf_model_name, category, group, top_k, engine.getReranker(), pool)
                 rr_threshold = rerank_min if rerank_min is not None else config["rerank_min"]
                 report["rerank"] = {

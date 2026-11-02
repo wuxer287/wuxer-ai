@@ -31,17 +31,27 @@
                 </div>
             </div>
 
+            <div id="q-progress" class="loading" hidden></div>
+
             <div id="q-result" class="result" hidden>
                 <div class="card">
-                    <div id="q-info" class="meta"></div>
+                    <div class="answer-head">
+                        <h2>Risposta</h2>
+
+                        <details id="q-stats" class="stats" hidden>
+                            <summary>Statistiche</summary>
+                            <div id="q-stats-body" class="stats-body"></div>
+                        </details>
+                    </div>
+
                     <div id="q-answer" class="answer"></div>
                     <div id="q-sources" class="chips"></div>
                 </div>
 
-                <aside id="q-chunks-card" class="card side" hidden>
-                    <h2>Chunk recuperati <span id="q-count" class="count"></span></h2>
+                <details id="q-chunks-card" class="card chunks" hidden>
+                    <summary>Chunk recuperati <span id="q-count" class="count"></span></summary>
                     <div id="q-chunks" class="stack"></div>
-                </aside>
+                </details>
             </div>
         </section>
 
@@ -71,7 +81,7 @@
                         <ul id="i-list" class="filelist"></ul>
                     </div>
 
-                    <div id="i-progress" class="progress" hidden><div id="i-bar" class="bar"></div></div>
+                    <div id="i-progress" class="loading" hidden></div>
 
                     <div class="actions">
                         <span id="i-status" class="muted"></span>
@@ -103,6 +113,8 @@
                     </div>
                 </div>
 
+                <div id="p-progress" class="loading" hidden></div>
+
                 <div id="p-result" hidden>
                     <p class="legend"><span class="dot pass"></span>sopra soglia <span class="dot cut"></span>tagliato</p>
                     <div id="p-out" class="cols"></div>
@@ -125,10 +137,15 @@
                         <label class="switch"><input type="checkbox" id="e-rerank" checked><span class="slider"></span>Anche con re-ranking</label>
                         <button id="e-go" class="btn primary needs-models">Esegui valutazione</button>
                     </div>
+                    <div id="e-progress" class="loading" hidden></div>
                     <div id="e-status" class="muted status"></div>
                 </div>
 
-                <div id="e-out"></div>
+                <div id="e-results" hidden>
+                    <div id="e-categories" class="pills"></div>
+                    <div id="e-methods" class="pills small"></div>
+                    <div id="e-out" class="card"></div>
+                </div>
             </div>
         </section>
     </main>

@@ -271,8 +271,14 @@ def runEval(req: EvalRequest):
     except (OSError, ValueError) as e:
         raise HTTPException(400, f"Impossibile leggere le domande: {e}")
 
+    def work(job):
+        def onProgress(number, total, name):
+            job["progress"] = f"[{number}/{total}] {name}"
+
+        return evaluate(engine, questions, req.top_k, req.rerank, req.pool, req.rerank_min, onProgress)
+
     return {
-        "job": startJob(lambda job: evaluate(engine, questions, req.top_k, req.rerank, req.pool, req.rerank_min))
+        "job": startJob(work)
     }
 
 @app.post("/api/probe")
