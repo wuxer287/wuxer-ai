@@ -1,5 +1,6 @@
-from openai import OpenAI
-from consts import TEMPERATURE, DEEPSEEK_BASE_URL
+import threading
+from openai import OpenAI, OpenAIError, APITimeoutError
+from consts import TEMPERATURE, DEEPSEEK_BASE_URL, LLM_TIMEOUT
 
 SYSTEM_PROMPT = {
     "strict": """Sei un assistente personale che risponde basandosi esclusivamente sulle informazioni fornite di seguito tra <context> </context>.
@@ -26,10 +27,39 @@ Regole per rispondere:
 - Rispondi in modo naturale, diretto e completo.""",
 }
 
+class GenerationError(Exception):
+    pass
+
+class GenerationTimeout(GenerationError):
+    pass
+
+def callWithDeadline(fn, timeout: float):
+    box = {}
+
+    def target():
+        try:
+            box["value"] = fn()
+        except BaseException as e:
+            box["error"] = e
+
+    thread = threading.Thread(target=target, daemon=True)
+    thread.start()
+    thread.join(timeout)
+
+    if thread.is_alive():
+        raise GenerationTimeout(f"Il servizio LLM non ha risposto entro {timeout:g} secondi")
+
+    if "error" in box:
+        raise box["error"]
+
+    return box["value"]
+
 def createClient(api_key: str) -> OpenAI:
     return OpenAI(
         api_key=api_key,
-        base_url=DEEPSEEK_BASE_URL
+        base_url=DEEPSEEK_BASE_URL,
+        timeout=LLM_TIMEOUT,
+        max_retries=3
     )
 
 def generateAnswer(client: OpenAI, model_name: str, chunks: list[tuple], question: str, mode: str, temperature: float | None):
@@ -39,24 +69,34 @@ def generateAnswer(client: OpenAI, model_name: str, chunks: list[tuple], questio
     text = " --- ".join(a[0] for a in chunks)
     user_content = f"<context> {text if text else "Nessuna informazione disponibile"} </context> {question}"
 
-    response = client.chat.completions.create(
-        model=model_name,
-        messages=[
-            {
-                "role": "system",
-                "content": system_content
-            },
-            {
-                "role": "user",
-                "content": user_content
+    def request():
+        return client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {
+                    "role": "system",
+                    "content": system_content
+                },
+                {
+                    "role": "user",
+                    "content": user_content
+                }
+            ],
+            temperature=temperature,
+            extra_body={
+                "thinking": {
+                    "type": "disabled"
+                }
             }
-        ],
-        temperature=temperature,
-        extra_body={
-            "thinking": {
-                "type": "disabled"
-            }
-        }
-    )
+        )
+
+    try:
+        response = callWithDeadline(request, LLM_TIMEOUT)
+    except GenerationError:
+        raise
+    except APITimeoutError as e:
+        raise GenerationTimeout(f"Il servizio LLM non ha risposto entro {LLM_TIMEOUT:g} secondi") from e
+    except OpenAIError as e:
+        raise GenerationError(f"Errore dal servizio LLM: {type(e).__name__}: {e}") from e
 
     return (response.choices[0].message.content, response.usage)

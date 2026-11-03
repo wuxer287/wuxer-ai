@@ -1,14 +1,15 @@
+import time
 import secrets
 import threading
 import uuid
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 from fastapi import FastAPI, Depends, File, Form, HTTPException, UploadFile, Request
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from openai import OpenAI
 from pydantic import BaseModel
-from generation import createClient
+from generation import createClient, GenerationError, GenerationTimeout
 from evaluation import loadQuestions
 from readers import validateFile
 from service import (
@@ -43,7 +44,9 @@ from consts import (
     MAX_UPLOAD_MB,
     MAX_UPLOAD_BYTES,
     MAX_UPLOAD_FILES,
-    SAFE_NAME
+    SAFE_NAME,
+    LOCK_TIMEOUT,
+    JOB_TTL
 )
 
 security = HTTPBasic(auto_error=False)
@@ -60,6 +63,7 @@ engine = Engine()
 model_lock = threading.Lock()
 questions_lock = threading.Lock()
 jobs: dict[str, dict] = {}
+jobs_lock = threading.Lock()
 client = None
 models_state = {
     "ready": False,
@@ -135,15 +139,40 @@ def checkReady() -> None:
     if not models_state["ready"]:
         raise HTTPException(503, "I modelli sono ancora in caricamento")
 
+@contextmanager
+def modelLock():
+    if not model_lock.acquire(timeout=LOCK_TIMEOUT):
+        raise HTTPException(503, "Il motore è occupato da un'altra operazione, riprova tra poco")
+
+    try:
+        yield
+    finally:
+        model_lock.release()
+
+def purgeJobs() -> None:
+    now = time.time()
+
+    for job_id in [i for i, j in list(jobs.items()) if j["finished"] and now - j["finished"] > JOB_TTL]:
+        jobs.pop(job_id, None)
+
+def checkNoJob() -> None:
+    if any(job["state"] == "running" for job in list(jobs.values())):
+        raise HTTPException(409, "C'è già un'operazione in corso, attendi che finisca")
+
 def startJob(work) -> str:
     job_id = uuid.uuid4().hex[:8]
     job = {
         "state": "running",
         "progress": "in attesa",
         "result": None,
-        "error": None
+        "error": None,
+        "finished": None
     }
-    jobs[job_id] = job
+
+    with jobs_lock:
+        purgeJobs()
+        checkNoJob()
+        jobs[job_id] = job
 
     def run():
         try:
@@ -155,6 +184,12 @@ def startJob(work) -> str:
         except Exception as e:
             job["state"] = "error"
             job["error"] = f"{type(e).__name__}: {e}"
+        finally:
+            if job["state"] == "running":
+                job["state"] == "error"
+                job["error"] = "Operazione interrotta in modo inprevisto"
+
+            job["finished"] = time.time()
 
     threading.Thread(target=run, daemon=True).start()
 
@@ -250,6 +285,7 @@ def sources():
 @app.post("/api/index", dependencies=[Depends(checkUploadSize)])
 def index(category: str = Form(DEFAULT_CATEGORY), dimension: int = Form(DEFAULT_DIMENSION), overlap: int = Form(DEFAULT_OVERLAP), strategy: str = Form(DEFAULT_STRATEGY), files: list[UploadFile] = File(default=[])):
     checkReady()
+    checkNoJob()
     checkCategory(category)
 
     if strategy not in ("word", "sentence"):
@@ -287,14 +323,18 @@ def query(req: QueryRequest):
         raise HTTPException(400, "La domanda è vuota")
 
     try:
-        with model_lock:
-            return answerQuestion(engine, getClient(), DEEPSEEK_MODEL, req.text, req.category, req.mode, req.temperature, top_k=req.top_k, min_sim=req.min_sim, use_rerank=req.rerank, rerank_min=req.rerank_min, pool=req.pool)
+        return answerQuestion(engine, getClient(), DEEPSEEK_MODEL, req.text, req.category, req.mode, req.temperature, lock=modelLock, top_k=req.top_k, min_sim=req.min_sim, use_rerank=req.rerank, rerank_min=req.rerank_min, pool=req.pool)
     except EmptyCategoryError:
         raise HTTPException(404, "Nessun contenuto indicizzato per questa categoria")
+    except GenerationTimeout as e:
+        raise HTTPException(504, str(e))
+    except GenerationError as e:
+        raise HTTPException(502, str(e))
 
 @app.post("/api/eval")
 def runEval(req: EvalRequest):
     checkReady()
+    checkNoJob()
 
     try:
         with questions_lock:
@@ -318,7 +358,7 @@ def probe(req: ProbeRequest):
     checkCategory(req.category)
 
     try:
-        with model_lock:
+        with modelLock():
             return probeQuestion(engine, req.question, req.category, req.top_k, req.pool)
     except EmptyCategoryError:
         raise HTTPException(404, "Nessun contenuto indicizzato per questa categoria")

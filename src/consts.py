@@ -72,3 +72,7 @@ MAX_UPLOAD_FILES = 20
 MAX_PDF_PAGES = 500
 
 SAFE_NAME = re.compile(r"(?![. ])[\w .()\-]{1,100}\.(md|pdf)")
+
+LLM_TIMEOUT = float(os.getenv("LLM_TIMEOUT", "60"))
+LOCK_TIMEOUT = 30
+JOB_TTL = 3600

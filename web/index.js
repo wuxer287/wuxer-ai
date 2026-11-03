@@ -14,7 +14,7 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function api(path, body, form) {
+async function api(path, body, form, timeout) {
     const options = {};
 
     if (form) {
@@ -27,7 +27,19 @@ async function api(path, body, form) {
         options.body = JSON.stringify(body);
     }
 
-    const res = await fetch(path, options);
+    options.signal = AbortSignal.timeout(timeout || (form ? 600000 : 120000));
+
+    let res;
+
+    try {
+        res = await fetch(path, options);
+    }
+    catch (e) {
+        if (e.name === "TimeoutError") throw new Error("Il server non risponde (timeout)");
+
+        throw e;
+    }
+
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) throw new Error(data.detail || ("Errore " + res.status));
@@ -36,8 +48,23 @@ async function api(path, body, form) {
 }
 
 async function pollJob(id, onProgress) {
+    let failures = 0;
+
     while (true) {
-        const job = await api("/api/jobs/" + id);
+        let job;
+
+        try {
+            job = await api("/api/jobs/" + id, undefined, undefined, 15000);
+            failures = 0;
+        }
+        catch (e) {
+            if (++failures >= 3) throw e;
+
+            await sleep(1500);
+
+            continue;
+        }
+
         onProgress(job.progress);
 
         if (job.state === "done") return job.result;

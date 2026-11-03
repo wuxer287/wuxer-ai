@@ -4,6 +4,7 @@ import time
 from datetime import datetime, timezone
 from itertools import chain
 from pathlib import Path
+from contextlib import nullcontext
 from storage import createConnection, createTableChunk, insertChunk, countChunksByCategory, deleteChunksBySource, createTableLog, logQuery, saveAnswerToFile
 from chunking import chunkText, chunkTextBySentence
 from embedding import loadModel, embeddedTexts
@@ -67,10 +68,11 @@ def indexFiles(engine: Engine, files: list[Path], category: str, dimension: int 
         createTableChunk(conn, model.get_embedding_dimension())
 
         for number, file_path in enumerate(files, start=1):
-            deleteChunksBySource(conn, file_path.name)
             text = readFile(file_path)
             chunked_text = chunkText(text, dimension, overlap) if strategy == "word" else chunkTextBySentence(text, dimension, overlap)
             embed_chunk = embeddedTexts(model, chunked_text, hf_model_name, "index")
+
+            deleteChunksBySource(conn, file_path.name)
 
             for i in range(len(chunked_text)):
                 insertChunk(conn, chunked_text[i], embed_chunk[i], file_path.name, hf_model_name, category)
@@ -127,9 +129,12 @@ def retrieve(engine: Engine, query: str, category: str, top_k: int = DEFAULT_TOP
     finally:
         conn.close()
 
-def answerQuestion(engine: Engine, client, api_model_name: str, query: str, category: str = DEFAULT_CATEGORY, mode: str = DEFAULT_MODE, temperature: float | None = None, **retrieve_options) -> dict:
+def answerQuestion(engine: Engine, client, api_model_name: str, query: str, category: str = DEFAULT_CATEGORY, mode: str = DEFAULT_MODE, temperature: float | None = None, lock = None, **retrieve_options) -> dict:
     start_time = time.time()
-    result = retrieve(engine, query, category, **retrieve_options)
+
+    with (lock() if lock else nullcontext()):
+        result = retrieve(engine, query, category, **retrieve_options)
+
     chunks = [{"text": c[0], "score": float(c[1]), "source": c[2]} for c in result]
     sources = sorted({c[2] for c in result})
 
