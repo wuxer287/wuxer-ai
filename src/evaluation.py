@@ -111,7 +111,7 @@ def sweep(results: list[dict], thresholds: list[float]) -> list[dict]:
 
     return rows
 
-def printReport(category: str, results: list[dict], summary: dict, verbose: bool = False, sweep_values: list[float] | None = None, label: str = ""):
+def printReport(category: str, results: list[dict], summary: dict, verbose: bool = False, sweep_values: list[float] | None = None, label: str = "", seconds: float | None = None):
     threshold = summary["threshold"]
     order = {name: i for i, name in enumerate(LABELS)}
     sorted_results = sorted(results, key=lambda r: (order[r["label"]], -r["scores"][0] if r["scores"] else 0))
@@ -198,3 +198,6 @@ def printReport(category: str, results: list[dict], summary: dict, verbose: bool
     if borderline:
         passing = sum(1 for r in borderline if r["scores"][0] >= threshold)
         print(f"- borderline con almeno un chunk che passa: {passing}/{len(borderline)} (informativo, non entra nel calcolo)")
+
+    if seconds is not None and results:
+        print(f"\nTempo: {seconds:.2f} s per {len(results)} domande ({seconds / len(results):.2f} s a domanda)")

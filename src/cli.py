@@ -1,4 +1,5 @@
 import sys
+import time
 import argparse
 from pathlib import Path
 from storage import createConnection, createTableChunk, countChunksByCategory
@@ -21,7 +22,8 @@ from consts import (
     DEFAULT_POOL,
     DEFAULT_DIMENSION,
     DEFAULT_OVERLAP,
-    DEFAULT_STRATEGY
+    DEFAULT_STRATEGY,
+    DEFAULT_RERANK
 )
 
 parser = argparse.ArgumentParser(description="Wuxer AI - indicizza le tue note e fai domande basate sul loro contenuto.")
@@ -111,7 +113,7 @@ query_parser.add_argument(
     type=float,
     default=None,
     help="Soglia minima di similarità (0-1) sotto la quale un chunk viene scartato prima di essere passato al modello. "
-         "Se omessa, si usa quella calibrata per la categoria. "
+         "Si usa solo con --no-rerank. Se omessa, si usa quella calibrata per la categoria. "
          "Indica 0 per vedere tutti i risultati, utile con --show-chunks per calibrare. "
          "Le soglie vanno calibrate per ogni categoria."
 )
@@ -141,10 +143,11 @@ query_parser.add_argument(
 
 query_parser.add_argument(
     "--rerank",
-    action="store_true",
+    action=argparse.BooleanOptionalAction,
+    default=DEFAULT_RERANK,
     help="Riordina i candidati con un cross-encoder (BAAI/bge-reranker-v2-m3) e scarta quelli sotto --rerank-min. "
-         "Più preciso ma più lento. "
-         "Con questa opzione --min-sim viene ignorato."
+         "È attivo di default: --no-rerank usa solo la similarità coseno con la soglia --min-sim. "
+         "Con il re-ranking --min-sim viene ignorato."
 )
 
 query_parser.add_argument(
@@ -159,7 +162,7 @@ query_parser.add_argument(
     "--pool",
     type=int,
     default=DEFAULT_POOL,
-    help="Con --rerank: numero di candidati recuperati dalla ricerca e passati al re-ranker (default: 20)."
+    help="Con il re-ranking: numero di candidati recuperati dalla ricerca e passati al re-ranker (default: 20)."
 )
 
 
@@ -194,8 +197,10 @@ eval_parser.add_argument(
 
 eval_parser.add_argument(
     "--rerank",
-    action="store_true",
-    help="Dopo il report normale, ripete la valutazione con il re-ranking (cross-encoder) per confrontare i risultati."
+    action=argparse.BooleanOptionalAction,
+    default=DEFAULT_RERANK,
+    help="Dopo il report con il coseno, ripete la valutazione con il re-ranking (cross-encoder) per confrontare i risultati. "
+         "È attivo di default: --no-rerank valuta solo il coseno."
 )
 
 eval_parser.add_argument(
@@ -296,14 +301,18 @@ elif args.command == "eval":
 
             continue
 
+        start = time.time()
         results = scoreQuestions(conn_chunk, model, hf_model_name, category, group, args.top_k)
+        seconds = time.time() - start
         summary = summarize(results, threshold)
-        printReport(category, results, summary, args.verbose)
+        printReport(category, results, summary, args.verbose, seconds=seconds)
 
         if reranker is not None:
+            start = time.time()
             rr_results = scoreQuestions(conn_chunk, model, hf_model_name, category, group, args.top_k, reranker, args.pool)
+            rr_seconds = time.time() - start
             rr_threshold = args.rerank_min if args.rerank_min is not None else CATEGORY_MODELS[category]["rerank_min"]
             rr_summary = summarize(rr_results, rr_threshold)
-            printReport(category, rr_results, rr_summary, args.verbose, RERANK_SWEEP, "re-ranking")
+            printReport(category, rr_results, rr_summary, args.verbose, RERANK_SWEEP, "re-ranking", rr_seconds)
 else:
     parser.print_help()

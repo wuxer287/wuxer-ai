@@ -41,6 +41,7 @@ from consts import (
     DEFAULT_STRATEGY,
     DEFAULT_DIMENSION,
     DEFAULT_OVERLAP,
+    DEFAULT_RERANK,
     MAX_UPLOAD_MB,
     MAX_UPLOAD_BYTES,
     MAX_UPLOAD_FILES,
@@ -93,7 +94,7 @@ class QueryRequest(BaseModel):
     category: str = DEFAULT_CATEGORY
     mode: str = DEFAULT_MODE
     top_k: int = DEFAULT_TOP_K
-    rerank: bool = False
+    rerank: bool = DEFAULT_RERANK
     pool: int = DEFAULT_POOL
     min_sim: float | None = None
     rerank_min: float | None = None
@@ -101,7 +102,7 @@ class QueryRequest(BaseModel):
 
 class EvalRequest(BaseModel):
     top_k: int = DEFAULT_TOP_K
-    rerank: bool = True
+    rerank: bool = DEFAULT_RERANK
     pool: int = DEFAULT_POOL
     rerank_min: float | None = None
 

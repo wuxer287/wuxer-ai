@@ -26,15 +26,17 @@ Stato del progetto e prossimi passi. Per cosa fa oggi il sistema e come si usa v
 - [x] Risposta in markdown, statistiche (token e tempo) e chunk recuperati nella pagina, barre di avanzamento per indicizzazione e valutazione
 - [x] Valuta dal sito: prova di una domanda con coseno e re-ranking affiancati, salvataggio in `eval/questions.json` e valutazione completa per categoria
 - [x] Controlli sui file caricati (nome, contenuto, dimensione e numero)
+- [x] Ampliate le domande di `eval` a 163 (58 + 26 + 14 per `note`, 29 + 23 + 13 per `programma`), con pulsanti per scaricare in JSON la prova di una domanda e la valutazione completa
+- [x] Re-ranking attivo di default (`--no-rerank` per il solo coseno) con soglie ricalibrate (`note` 0.075, `programma` 0.03): il coseno non separa pertinenti e fuori tema
+- [x] Tempo di esecuzione di coseno e re-ranking nel comando `eval` e nella scheda Valuta
 
 ## Prossimo step
 
-- [ ] Decidere se il re-ranking resta opzionale (utile in `note`, poco in `programma`), confrontando coseno e re-ranking dalla scheda Valuta
-- [ ] Ampliare le domande di `eval`, anche dalla scheda Valuta, per rendere più solide le soglie (margine di circa 0.05 in `note`)
 - [ ] Direzione "grande": servizio con API, utenti e collezioni separate, da collegare al social network wuxer (da definire)
 
 ## Secondari
 
+- [ ] Migliorare il filtro sulle domande fuori tema che condividono parole con il testo ("missioni su Marte" supera il re-ranker con 0.123) e sulle borderline
 - [ ] Eliminare un documento indicizzato dalla scheda Indicizza
 - [ ] Test automatici per `service.py` e per le rotte del sito
 - [ ] Costo cumulativo delle query

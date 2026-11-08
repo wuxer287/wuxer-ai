@@ -84,7 +84,7 @@ interactiveQuery() {
         return 1
     fi
 
-    askExtraArgs "--category {note,programma}  --mode {strict,standard,full}  --top-k N  --min-sim X  --temperature X  --show-chunks  --rerank  --rerank-min X  --pool N"
+    askExtraArgs "--category {note,programma}  --mode {strict,standard,full}  --top-k N  --min-sim X  --temperature X  --show-chunks  --no-rerank  --rerank-min X  --pool N"
     runCommand query "$question" "${EXTRA_ARGS[@]}"
 }
 
@@ -92,7 +92,7 @@ interactiveEval() {
     read -e -r -p "File delle domande [eval/questions.json]: " file
     file="${file:-eval/questions.json}"
 
-    askExtraArgs "--top-k N  --verbose  --rerank  --pool N  --rerank-min X"
+    askExtraArgs "--top-k N  --verbose  --no-rerank  --pool N  --rerank-min X"
     runCommand eval "$file" "${EXTRA_ARGS[@]}"
 }
 

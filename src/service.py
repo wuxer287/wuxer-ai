@@ -205,14 +205,17 @@ def evaluate(engine: Engine, questions: list[dict], top_k: int = DEFAULT_TOP_K, 
             if on_progress:
                 on_progress(number, total, f"{category}: coseno")
 
+            start = time.time()
             results = scoreQuestions(conn, model, hf_model_name, category, group, top_k)
+            seconds = time.time() - start
             threshold = config["min_sim"]
             report = {
                 "cosine": {
                     "threshold": threshold,
                     "results": results,
                     "summary": summarize(results, threshold),
-                    "sweep": sweep(results, sweepThresholds(threshold))
+                    "sweep": sweep(results, sweepThresholds(threshold)),
+                    "seconds": round(seconds, 2)
                 }
             }
 
@@ -222,13 +225,17 @@ def evaluate(engine: Engine, questions: list[dict], top_k: int = DEFAULT_TOP_K, 
                 if on_progress:
                     on_progress(number, total, f"{category}: re-ranking")
 
-                rr_results = scoreQuestions(conn, model, hf_model_name, category, group, top_k, engine.getReranker(), pool)
+                reranker = engine.getReranker()
+                start = time.time()
+                rr_results = scoreQuestions(conn, model, hf_model_name, category, group, top_k, reranker, pool)
+                rr_seconds = time.time() - start
                 rr_threshold = rerank_min if rerank_min is not None else config["rerank_min"]
                 report["rerank"] = {
                     "threshold": rr_threshold,
                     "results": rr_results,
                     "summary": summarize(rr_results, rr_threshold),
-                    "sweep": sweep(rr_results, sorted(set(RERANK_SWEEP) | {rr_threshold}))
+                    "sweep": sweep(rr_results, sorted(set(RERANK_SWEEP) | {rr_threshold})),
+                    "seconds": round(rr_seconds, 2)
                 }
 
             reports[category] = report

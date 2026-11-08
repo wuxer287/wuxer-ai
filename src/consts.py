@@ -26,7 +26,7 @@ CATEGORY_MODELS = {
     "note": {
         "model": EMBEDDING_MODEL,
         "min_sim": 0.735,
-        "rerank_min": 0.06
+        "rerank_min": 0.075
     },
     "programma": {
         "model": EMBEDDING_MODEL,
@@ -48,6 +48,7 @@ DEFAULT_CATEGORY = "note"
 DEFAULT_MODE = "strict"
 DEFAULT_TOP_K = 5
 DEFAULT_POOL = 20
+DEFAULT_RERANK = True
 DEFAULT_STRATEGY = "sentence"
 DEFAULT_DIMENSION = 40
 DEFAULT_OVERLAP = 1

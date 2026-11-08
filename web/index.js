@@ -774,6 +774,8 @@ function renderReport(title, rep) {
     metrics.append(metric("Soglia suggerita", s.suggested !== undefined ? s.suggested.toFixed(3) : (s.n_relevant && s.n_off_topic ? "nessuna (si sovrappongono)" : "-")));
     box.append(metrics);
 
+    if (rep.seconds !== undefined) box.append(el("p", `Tempo: ${rep.seconds.toFixed(2)} s per ${rep.results.length} domande (${(rep.seconds / rep.results.length).toFixed(2)} s a domanda)`, "muted"));
+
     if (s.answers_lost) box.append(el("p", `Pertinenti senza chunk: ${s.answers_lost.length}/${s.n_relevant} · chunk tagliati: ${s.chunks_cut}/${s.chunks_total}`, "muted"));
 
     if (s.leaked) box.append(el("p", `Fuori tema che passano: ${s.leaked.length}/${s.n_off_topic}`, "muted"));
