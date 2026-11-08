@@ -114,6 +114,297 @@
         "expected_source": "sistemi-auto-organizzati.md"
     },
     {
+        "question": "Cosa pensa Manzoni dei Romani?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "ALESSANDRO MANZONI pensiero e poetica.pdf"
+    },
+    {
+        "question": "Cosa significa «l'utile per iscopo, il vero per soggetto, l'interessante per mezzo»?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "ALESSANDRO MANZONI pensiero e poetica.pdf"
+    },
+    {
+        "question": "Cosa sono gli Inni sacri?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "Inni sacri e Odi.pdf"
+    },
+    {
+        "question": "Quali inni sacri ha scritto Manzoni?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "Inni sacri e Odi.pdf"
+    },
+    {
+        "question": "Perché Manzoni compone l'ode Marzo 1821?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "Inni sacri e Odi.pdf"
+    },
+    {
+        "question": "Come viene visto Napoleone nel Cinque maggio?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": [
+            "Inni sacri e Odi.pdf",
+            "IL CINQUE MAGGIO (sintesi delle strofe del componimento).pdf"
+        ]
+    },
+    {
+        "question": "Quante strofe ha Il cinque maggio?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "IL CINQUE MAGGIO (sintesi delle strofe del componimento).pdf"
+    },
+    {
+        "question": "Cosa vuol dire «Fu vera gloria?»",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "IL CINQUE MAGGIO (sintesi delle strofe del componimento).pdf"
+    },
+    {
+        "question": "Perché Manzoni rifiuta le unità aristoteliche?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "Le tragedie manzoniane.pdf"
+    },
+    {
+        "question": "Di cosa parla l'Adelchi?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "Le tragedie manzoniane.pdf"
+    },
+    {
+        "question": "Che funzione hanno i cori nelle tragedie di Manzoni?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "Le tragedie manzoniane.pdf"
+    },
+    {
+        "question": "Cos'è il pessimismo cosmico di Leopardi?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "Leopardi (pensiero).pdf"
+    },
+    {
+        "question": "Perché per Leopardi l'uomo è infelice?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": [
+            "Leopardi (pensiero).pdf",
+            "Poetica del vago e indefinito.pdf"
+        ]
+    },
+    {
+        "question": "Cos'è la teoria del piacere di Leopardi?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": [
+            "Leopardi (pensiero).pdf",
+            "Poetica del vago e indefinito.pdf"
+        ]
+    },
+    {
+        "question": "Cosa intende Leopardi per poetica del vago e indefinito?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "Poetica del vago e indefinito.pdf"
+    },
+    {
+        "question": "Che ruolo ha la rimembranza nella poesia di Leopardi?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "Poetica del vago e indefinito.pdf"
+    },
+    {
+        "question": "Quanto dura il corso di JavaScript?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "javascript_learning_plan.md"
+    },
+    {
+        "question": "Quali libri consiglia per imparare JavaScript?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "javascript_learning_plan.md"
+    },
+    {
+        "question": "Cosa si studia nella parte sulla programmazione asincrona?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "javascript_learning_plan.md"
+    },
+    {
+        "question": "Cosa si studia sulle variabili in JavaScript?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "javascript_learning_plan.md"
+    },
+    {
+        "question": "Quale routine di studio consiglia il piano?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "javascript_learning_plan.md"
+    },
+    {
+        "question": "Leopardi",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": [
+            "Leopardi (pensiero).pdf",
+            "Poetica del vago e indefinito.pdf"
+        ]
+    },
+    {
+        "question": "Che cos'è la mielina?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "adolescenza.md"
+    },
+    {
+        "question": "Qual è la differenza tra arabica e robusta?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "il-caffe.md"
+    },
+    {
+        "question": "Chi era Kaldi?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "il-caffe.md"
+    },
+    {
+        "question": "Come è arrivato il caffè in Europa?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": [
+            "il-caffe.md",
+            "sistemi-auto-organizzati.md"
+        ]
+    },
+    {
+        "question": "Perché l'espresso contiene meno caffeina del caffè filtro?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "il-caffe.md"
+    },
+    {
+        "question": "Chi ha coniato il termine effetto Mandela?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "effetto-mandela.md"
+    },
+    {
+        "question": "Quali sono gli esempi più famosi di falsi ricordi collettivi?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "effetto-mandela.md"
+    },
+    {
+        "question": "Cos'è la confabulazione?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "effetto-mandela.md"
+    },
+    {
+        "question": "Come comunicano i polpi?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "pulpi-intelligenza.md"
+    },
+    {
+        "question": "Quanto vivono i polpi?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "pulpi-intelligenza.md"
+    },
+    {
+        "question": "Dove si trovano i neuroni dei polpi?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": [
+            "pulpi-intelligenza.md",
+            "sistemi-auto-organizzati.md"
+        ]
+    },
+    {
+        "question": "Cosa sono le camere dell'eco?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": [
+            "politica-e-giovani.md",
+            "sistemi-auto-organizzati.md"
+        ]
+    },
+    {
+        "question": "Quali sono le priorità politiche dei giovani oggi?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "politica-e-giovani.md"
+    },
+    {
+        "question": "Cos'è la potatura sinaptica?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": [
+            "adolescenza.md",
+            "sistemi-auto-organizzati.md"
+        ]
+    },
+    {
+        "question": "Cosa dice Erikson sull'adolescenza?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "adolescenza.md"
+    },
+    {
+        "question": "Le differenze tra ragazzi e ragazze sono più grandi delle somiglianze?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "ragazzi-ragazze.md"
+    },
+    {
+        "question": "Quali sfide affrontano sia i ragazzi sia le ragazze?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "ragazzi-ragazze.md"
+    },
+    {
+        "question": "Quali sono i vantaggi e i rischi dei sistemi decentralizzati?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": "sistemi-auto-organizzati.md"
+    },
+    {
+        "question": "effetto Mandela",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": [
+            "effetto-mandela.md",
+            "sistemi-auto-organizzati.md"
+        ]
+    },
+    {
+        "question": "ma i polpi sono furbi?",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": [
+            "pulpi-intelligenza.md",
+            "sistemi-auto-organizzati.md"
+        ]
+    },
+    {
+        "question": "caffè origine Etiopia",
+        "category": "note",
+        "label": "pertinente",
+        "expected_source": [
+            "il-caffe.md",
+            "sistemi-auto-organizzati.md"
+        ]
+    },
+    {
         "question": "Qual è la capitale dell'Australia?",
         "category": "note",
         "label": "fuori_tema"
@@ -169,12 +460,82 @@
         "label": "fuori_tema"
     },
     {
-        "question": "Chi era Nelson Mandela?",
+        "question": "Chi ha scritto la Divina Commedia?",
         "category": "note",
-        "label": "borderline"
+        "label": "fuori_tema"
     },
     {
-        "question": "Che cos'è la mielina?",
+        "question": "Come si scrive un ciclo in Python?",
+        "category": "note",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Cos'è un database relazionale?",
+        "category": "note",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Chi ha vinto il Nobel per la letteratura nel 2020?",
+        "category": "note",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Come si coltiva il cacao?",
+        "category": "note",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Qual è la capitale dell'Etiopia?",
+        "category": "note",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Qual è il miglior bar per un caffè a Roma?",
+        "category": "note",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Chi ha vinto le elezioni americane del 2020?",
+        "category": "note",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Come si calcola l'area di un cerchio?",
+        "category": "note",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Quali sono i sintomi dell'influenza?",
+        "category": "note",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Chi ha dipinto la Gioconda?",
+        "category": "note",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Come funziona il mercato azionario?",
+        "category": "note",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Ciao, come stai?",
+        "category": "note",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "What is the capital of France?",
+        "category": "note",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Scrivimi una poesia sul mare",
+        "category": "note",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Chi era Nelson Mandela?",
         "category": "note",
         "label": "borderline"
     },
@@ -185,6 +546,61 @@
     },
     {
         "question": "Come si può allenare la memoria?",
+        "category": "note",
+        "label": "borderline"
+    },
+    {
+        "question": "Come si studia meglio per un esame?",
+        "category": "note",
+        "label": "borderline"
+    },
+    {
+        "question": "Di cosa parla I promessi sposi?",
+        "category": "note",
+        "label": "borderline"
+    },
+    {
+        "question": "Di cosa parla L'infinito di Leopardi?",
+        "category": "note",
+        "label": "borderline"
+    },
+    {
+        "question": "Quali sono le opere di Foscolo?",
+        "category": "note",
+        "label": "borderline"
+    },
+    {
+        "question": "Cos'è React?",
+        "category": "note",
+        "label": "borderline"
+    },
+    {
+        "question": "Come si scrive un ciclo for in JavaScript?",
+        "category": "note",
+        "label": "borderline"
+    },
+    {
+        "question": "Quanto dormono gli adolescenti?",
+        "category": "note",
+        "label": "borderline"
+    },
+    {
+        "question": "Quanti tentacoli ha un polpo?",
+        "category": "note",
+        "label": "borderline"
+    },
+    {
+        "question": "Quanto caffè si può bere al giorno?",
+        "category": "note",
+        "label": "borderline"
+    },
+    {
+        "question": "Qual è il paese che consuma più caffè?",
+        "category": "note",
+        "label": "borderline"
+    },
+    {
+        "question": "Che cos'è Fridays for Future?",
         "category": "note",
         "label": "borderline"
     },
@@ -259,6 +675,81 @@
         "label": "pertinente"
     },
     {
+        "question": "Cosa propone sulle pensioni e sulla previdenza?",
+        "category": "programma",
+        "label": "pertinente"
+    },
+    {
+        "question": "Cosa si dice sulla separazione delle carriere e sul CSM?",
+        "category": "programma",
+        "label": "pertinente"
+    },
+    {
+        "question": "Cos'è il Mutuo Tricolore?",
+        "category": "programma",
+        "label": "pertinente"
+    },
+    {
+        "question": "Cosa prevede il Piano Casa?",
+        "category": "programma",
+        "label": "pertinente"
+    },
+    {
+        "question": "Cos'è il quoziente familiare?",
+        "category": "programma",
+        "label": "pertinente"
+    },
+    {
+        "question": "Qual è la posizione sull'invio di armi all'Ucraina?",
+        "category": "programma",
+        "label": "pertinente"
+    },
+    {
+        "question": "Cosa pensa del conflitto tra Stati Uniti e Iran?",
+        "category": "programma",
+        "label": "pertinente"
+    },
+    {
+        "question": "Cosa si dice sulla spesa militare e sul prestito SAFE?",
+        "category": "programma",
+        "label": "pertinente"
+    },
+    {
+        "question": "Cosa propone contro le baby gang?",
+        "category": "programma",
+        "label": "pertinente"
+    },
+    {
+        "question": "Qual è la posizione sull'eutanasia e sulle cure palliative?",
+        "category": "programma",
+        "label": "pertinente"
+    },
+    {
+        "question": "Cosa propone sulla caccia?",
+        "category": "programma",
+        "label": "pertinente"
+    },
+    {
+        "question": "Cosa dice sulla PAC e sul reddito degli agricoltori?",
+        "category": "programma",
+        "label": "pertinente"
+    },
+    {
+        "question": "Cosa propone su intelligenza artificiale e data center?",
+        "category": "programma",
+        "label": "pertinente"
+    },
+    {
+        "question": "Cos'è la moneta fiscale?",
+        "category": "programma",
+        "label": "pertinente"
+    },
+    {
+        "question": "Come cambierebbe l'elezione del Presidente della Repubblica?",
+        "category": "programma",
+        "label": "pertinente"
+    },
+    {
         "question": "Come si prepara la carbonara?",
         "category": "programma",
         "label": "fuori_tema"
@@ -294,6 +785,86 @@
         "label": "fuori_tema"
     },
     {
+        "question": "Come si coltiva il pomodoro?",
+        "category": "programma",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Chi ha scritto I promessi sposi?",
+        "category": "programma",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Quanti abitanti ha Tokyo?",
+        "category": "programma",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Come funziona il Wi-Fi?",
+        "category": "programma",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Qual è la ricetta del tiramisù?",
+        "category": "programma",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Come si cambia una gomma dell'auto?",
+        "category": "programma",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Quanto è alto il Monte Bianco?",
+        "category": "programma",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Chi ha vinto l'ultimo Sanremo?",
+        "category": "programma",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Come si calcola la media dei voti?",
+        "category": "programma",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Chi ha vinto le elezioni americane del 2020?",
+        "category": "programma",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "What is the capital of France?",
+        "category": "programma",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Ciao, come stai?",
+        "category": "programma",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Cosa dice il programma sul cinema?",
+        "category": "programma",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Il programma parla di Manzoni?",
+        "category": "programma",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Cosa propone il partito per le missioni su Marte?",
+        "category": "programma",
+        "label": "fuori_tema"
+    },
+    {
+        "question": "Cosa dice il programma sull'effetto Mandela?",
+        "category": "programma",
+        "label": "fuori_tema"
+    },
+    {
         "question": "Quanto la cucina italiana influenza il cancro?",
         "category": "programma",
         "label": "borderline"
@@ -310,6 +881,51 @@
     },
     {
         "question": "Come sono andate le ultime elezioni?",
+        "category": "programma",
+        "label": "borderline"
+    },
+    {
+        "question": "Cosa propone per ridurre le liste d'attesa nella sanità?",
+        "category": "programma",
+        "label": "borderline"
+    },
+    {
+        "question": "Cosa propone sulla scuola e sui programmi scolastici?",
+        "category": "programma",
+        "label": "borderline"
+    },
+    {
+        "question": "Cosa propone sul turismo?",
+        "category": "programma",
+        "label": "borderline"
+    },
+    {
+        "question": "Cosa si dice sul reddito di cittadinanza?",
+        "category": "programma",
+        "label": "borderline"
+    },
+    {
+        "question": "Cosa propone sul ponte sullo Stretto di Messina?",
+        "category": "programma",
+        "label": "borderline"
+    },
+    {
+        "question": "Chi è il segretario del partito?",
+        "category": "programma",
+        "label": "borderline"
+    },
+    {
+        "question": "Quali sono i diritti di un lavoratore dipendente?",
+        "category": "programma",
+        "label": "borderline"
+    },
+    {
+        "question": "Come viene vista la natura?",
+        "category": "programma",
+        "label": "borderline"
+    },
+    {
+        "question": "C'è un legame tra il pensiero di Leopardi e il programma?",
         "category": "programma",
         "label": "borderline"
     }

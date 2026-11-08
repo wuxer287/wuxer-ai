@@ -676,7 +676,24 @@ $("i-go").onclick = async () => {
     $("i-go").disabled = false;
 };
 
+function downloadJson(data, name) {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function fileStamp() {
+    return new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+}
+
 // --- Valuta: prova una domanda ---
+let lastProbe = null;
+
 function probeColumn(title, chunks, threshold) {
     const col = el("div");
     const passed = chunks.filter(chunk => chunk.score >= threshold).length;
@@ -699,7 +716,10 @@ $("p-go").onclick = async () => {
     showLoading("p-progress");
 
     try {
-        const data = await api("/api/probe", { question: $("p-text").value, category: $("p-category").value });
+        const question = $("p-text").value;
+        const category = $("p-category").value;
+        const data = await api("/api/probe", { question, category });
+        lastProbe = { question, category, date: new Date().toISOString(), ...data }
         $("p-out").append(probeColumn("Coseno", data.cosine, data.min_sim), probeColumn("Re-ranking", data.rerank, data.rerank_min));
         $("p-result").hidden = false;
         $("p-save").hidden = false;
@@ -791,6 +811,7 @@ function renderReport(title, rep) {
 }
 
 let evalReports = {};
+let evalMeta = null;
 let evalView = { category: null, method: "cosine" };
 
 function renderEval() {
@@ -850,6 +871,14 @@ function renderEval() {
     $("e-out").append(renderReport(evalView.method === "cosine" ? "Coseno" : "Re-ranking", report[evalView.method]));
 }
 
+$("p-download").onclick = () => {
+    if (lastProbe) downloadJson(lastProbe, `prova-domanda-${fileStamp()}.json`)
+}
+
+$("e-download").onclick = () => {
+    if (evalMeta) downloadJson({ ...evalMeta, reports: evalReports }, `valutazione-${fileStamp()}.json`)
+}
+
 $("e-go").onclick = async () => {
     $("e-go").disabled = true;
     $("e-results").hidden = true;
@@ -857,8 +886,10 @@ $("e-go").onclick = async () => {
     showLoading("e-progress");
 
     try {
-        const { job } = await api("/api/eval", { rerank: $("e-rerank").checked });
+        const rerank = $("e-rerank").checked;
+        const { job } = await api("/api/eval", { rerank });
         evalReports = await pollJob(job, text => updateLoading("e-progress", text));
+        evalMeta = { date: new Date().toISOString, rerank };
         evalView = { category: Object.keys(evalReports).find(category => !evalReports[category].skipped) || null, method: "cosine" };
         $("e-results").hidden = false;
         renderEval();

@@ -1048,6 +1048,16 @@ tr.current td {
     margin-bottom: 0;
 }
 
+.legend .push {
+    margin-left: auto;
+}
+
+.results-head {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: .5rem;
+}
+
 .pills {
     display: flex;
     flex-wrap: wrap;
